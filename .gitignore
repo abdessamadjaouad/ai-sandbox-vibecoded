@@ -1,0 +1,46 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.kubeconfig
+*.ovpn
+
+# Local MCP/OpenCode config (contains tokens/keys)
+open.json
+opencode.json
+opencode.local.json
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Logs
+*.log
+
+# Editor/IDE local state
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
