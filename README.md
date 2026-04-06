@@ -105,3 +105,7 @@ The platform is built as 4 layers:
 ## License
 
 MIT
+
+## Developed by
+
+Abdessamad JAOUAD.
