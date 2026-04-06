@@ -328,3 +328,9 @@ When generating Streamlit pages:
   - Use st.steps or a sidebar progress indicator for multi-step flows
   - Always add st.spinner() around any operation > 1 second
 </output_format>
+
+## Session Memory Rule
+Before starting any task, check memory MCP for prior runs of the same
+use-case type. If a pattern exists, reuse it and state which pattern
+was retrieved. After completing a task, store the pattern with:
+key = use_case_type + task_type, value = approach taken + outcome.
