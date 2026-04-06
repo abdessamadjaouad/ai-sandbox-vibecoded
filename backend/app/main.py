@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from backend.app.api.datasets import router as datasets_router
 from backend.app.api.experiments import router as experiments_router
 from backend.app.api.evaluation import router as evaluation_router
+from backend.app.api.auth import router as auth_router
 from backend.app.core.config import settings
 from backend.app.core.logging import get_logger, setup_logging
 
@@ -28,6 +29,7 @@ app = FastAPI(
 )
 
 # API Routers
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(datasets_router, prefix="/api/v1")
 app.include_router(experiments_router, prefix="/api/v1")
 app.include_router(evaluation_router, prefix="/api/v1")
