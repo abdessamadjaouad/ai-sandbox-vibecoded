@@ -31,9 +31,18 @@ services:
       sh -c "
       set -e;
       export PGPASSWORD=\"$$POSTGRES_PASSWORD\";
-      psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -c 'SELECT 1;' >/dev/null;
+      echo 'Waiting for postgres DNS and connection readiness...';
+      for i in 1 2 3 4 5 6 7 8 9 10; do
+        if psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -c 'SELECT 1;' >/dev/null 2>&1; then
+          echo 'Postgres connection ready!';
+          break;
+        fi;
+        echo \"Attempt $$i: waiting for postgres...\";
+        sleep 2;
+      done;
       psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -tc \"SELECT 1 FROM pg_database WHERE datname='$$APP_DB';\" | grep -q 1 || psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -c \"CREATE DATABASE \\\"$$APP_DB\\\";\";
       psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -tc \"SELECT 1 FROM pg_database WHERE datname='$$MLFLOW_DB';\" | grep -q 1 || psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -c \"CREATE DATABASE \\\"$$MLFLOW_DB\\\";\";
+      echo 'Database initialization complete!';
       "
 
   chromadb:
