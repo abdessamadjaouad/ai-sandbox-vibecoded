@@ -148,7 +148,7 @@ class ExperimentResult(Base, TimestampMixin):
     )
     model_config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     hyperparameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
-    metrics: Mapped[dict[str, float]] = mapped_column(JSONB, nullable=False, default=dict)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     global_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     training_duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -239,7 +239,7 @@ class ExperimentResultRead(BaseModel):
     model_family: ModelFamily
     model_config: dict[str, Any]
     hyperparameters: dict[str, Any] | None
-    metrics: dict[str, float]
+    metrics: dict[str, Any]
     global_score: float | None
     rank: int | None
     training_duration_seconds: float | None

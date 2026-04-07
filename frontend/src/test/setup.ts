@@ -1,0 +1,2 @@
+// /home/jao/Desktop/sandbox-project-vibecoded/frontend/src/test/setup.ts
+import "@testing-library/jest-dom/vitest";

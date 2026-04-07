@@ -491,19 +491,19 @@ async def _execute_experiment(experiment_id: uuid.UUID) -> None:
 
 async def _load_data_from_storage(storage, path: str) -> dict[str, Any]:
     """Load data from MinIO and return as dict."""
-    # Extract bucket and key from path
-    # Path format: s3://bucket/key or bucket/key
-    if path.startswith("s3://"):
-        path = path[5:]
+    # Normalize path to object key expected by StorageClient.
+    # Supported path formats:
+    # - s3://<bucket>/<key>
+    # - <bucket>/<key>
+    # - <key>
+    normalized = path[5:] if path.startswith("s3://") else path
+    normalized = normalized.lstrip("/")
 
-    parts = path.split("/", 1)
-    if len(parts) != 2:
-        raise ValueError(f"Invalid path format: {path}")
+    bucket_prefix = f"{storage.bucket_name}/"
+    key = normalized[len(bucket_prefix) :] if normalized.startswith(bucket_prefix) else normalized
 
-    bucket, key = parts
-
-    # Download file
-    data_bytes = storage.download_file(bucket, key)
+    # Download file from the configured bucket
+    data_bytes = storage.download_file(key)
 
     # Parse based on extension
     if key.endswith(".parquet"):

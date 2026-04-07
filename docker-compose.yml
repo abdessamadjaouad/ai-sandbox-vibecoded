@@ -16,6 +16,26 @@ services:
       timeout: 3s
       retries: 5
 
+  db-init:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      APP_DB: ${APP_DB:-sandbox_app}
+      MLFLOW_DB: ${MLFLOW_DB:-mlflow}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+      set -e;
+      export PGPASSWORD=\"$$POSTGRES_PASSWORD\";
+      psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -c 'SELECT 1;' >/dev/null;
+      psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -tc \"SELECT 1 FROM pg_database WHERE datname='$$APP_DB';\" | grep -q 1 || psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -c \"CREATE DATABASE \\\"$$APP_DB\\\";\";
+      psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -tc \"SELECT 1 FROM pg_database WHERE datname='$$MLFLOW_DB';\" | grep -q 1 || psql -h postgres -U \"$$POSTGRES_USER\" -d postgres -v ON_ERROR_STOP=1 -c \"CREATE DATABASE \\\"$$MLFLOW_DB\\\";\";
+      "
+
   chromadb:
     image: chromadb/chroma:latest
     restart: unless-stopped
@@ -39,11 +59,14 @@ services:
       mlflow server
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-aisandbox}
+      --allowed-hosts "mlflow:5000,localhost:5000,127.0.0.1:5000"
+      --backend-store-uri postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${MLFLOW_DB:-mlflow}
       --default-artifact-root /mlflow/artifacts
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     volumes:
       - mlflowdata:/mlflow/artifacts
     healthcheck:
@@ -79,7 +102,7 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-aisandbox}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${APP_DB:-sandbox_app}
       MLFLOW_TRACKING_URI: http://mlflow:5000
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
@@ -87,8 +110,11 @@ services:
       MINIO_BUCKET_NAME: sandbox
       CHROMA_HOST: chromadb
       CHROMA_PORT: 8000
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
+      db-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       chromadb:
@@ -99,6 +125,22 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pidof nginx >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3

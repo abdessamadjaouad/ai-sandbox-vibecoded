@@ -1,0 +1,39 @@
+these are the improvements I need for the app.
+1- It should Have a profesional landing page describing the application and all its features and what it can provide and what are the targeted clients, with buttons and links and all that.
+2- it should have DXC.com colors palette (it's the company website) and here is the breakdown of it : Brand Colors
+DXC Amber: #FFB372
+DXC Coral: #FF784E
+DXC Blue: #569AF4
+Main brand gradient: #FFB372 → #FF784E → #569AF4
+Secondary blue gradient: #569AF4 → #3B7FD8
+Warm gradient: #FFB372 → #FF784E
+Semantic Colors
+Success: #22C58B
+Error/Danger: #EF4444
+Light Theme Palette
+App background: #F4F6FB
+Primary surface: #FFFFFF
+Secondary surfaces: #F9FBFF, #F3F7FD, #FBFDFF
+Primary text: #0B0F14
+Secondary text: #3F536E, #5A6F8F
+Controls/labels: #1E3252
+Hero text tones: #11162A, #2A3045, #2D344B
+Borders/shadows: blue and warm rgba variants around rgba(86, 154, 244, ...), rgba(255, 120, 78, ...), and rgba(0, 0, 0, 0.12)
+Dark Theme Palette
+App background: #07090F
+Primary surface: #0D1117
+Secondary surfaces: #111827, #161F2E, #0F1622
+Primary text: #EEF2FB
+Secondary text: #8B9CBF, #5A6B8A
+Controls/labels: #E1EAFF
+Hero text tones: #ECF2FF, #A6B7D9
+Borders/shadows: rgba blue family, warm accents, and deep shadow rgba(0, 0, 0, 0.55)
+Button Tone Sets
+Light primary button: #11162A → #131B34, text #F4F7FF
+Dark primary button: #F8FBFF → #E8EEFC, text #131A31
+Chart Palette
+Score bars use the same brand triad gradient:
+#569AF4 → #FF784E → #FFB372 
+3- You can also find the logo in the frontend folder (dxc-log.png)
+4- for the markdown report, it should be rendered to well presented (not just raw)
+5- For the ux, the user should be have an easy experience as a user who doesn't know the technical stuff, with the possibility to expand advanced setting to tweak the more technical parameters. The user should only upload the dataset, the name will be detected automatically and he could change it if he wants, and also the columns and the target variable should be detected automatically as well as the task type (regression or classification), then the user should see all the models automatically selected and he can deselect one or more if he wants to and then run the benchmarcks, see the progress of the process in realtime. If there is an error it should appear explained in the page with ability to try again. And then the dashboard should appear with the graph of the models scores and also a table of the scores and accuracy. and also the user can see the markdown report rendered and can download it markdown or pdf.

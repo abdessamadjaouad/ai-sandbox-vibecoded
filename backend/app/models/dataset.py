@@ -2,7 +2,7 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
@@ -171,6 +171,19 @@ class DatasetVersionRead(BaseModel):
     config_hash: str
     chroma_collection_id: str | None
     created_at: datetime
+
+
+class DatasetAutoConfigRead(BaseModel):
+    """Schema for auto-detected dataset configuration suggestions."""
+
+    dataset_id: uuid.UUID
+    suggested_name: str
+    task_type: Literal["classification", "regression"]
+    target_column: str | None
+    feature_columns: list[str]
+    stratify_column: str | None
+    confidence: str
+    rationale: str
 
 
 class ValidationReport(BaseModel):

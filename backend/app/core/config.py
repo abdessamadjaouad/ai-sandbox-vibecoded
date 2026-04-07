@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60
 
     default_random_seed: int = 42
+    cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
 
 settings = Settings()

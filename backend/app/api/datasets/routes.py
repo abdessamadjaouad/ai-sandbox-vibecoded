@@ -1,5 +1,6 @@
 # backend/app/api/datasets/routes.py
 import uuid
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
@@ -15,6 +16,7 @@ from backend.app.data_layer.validation import DatasetValidationService
 from backend.app.data_layer.versioning import DatasetVersioningService, VersioningError
 from backend.app.models.dataset import (
     Dataset,
+    DatasetAutoConfigRead,
     DatasetCreate,
     DatasetListResponse,
     DatasetRead,
@@ -28,6 +30,82 @@ from backend.app.models.dataset import (
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/datasets", tags=["datasets"])
+
+
+def _guess_task_type(df, target_column: str | None) -> tuple[str, str, str]:
+    """Infer task type from the probable target column.
+
+    Returns:
+        tuple of (task_type, confidence, rationale)
+    """
+    if not target_column or target_column not in df.columns:
+        return "classification", "low", "No clear target was detected, defaulted to classification."
+
+    series = df[target_column].dropna()
+    if series.empty:
+        return "classification", "low", f"Target column '{target_column}' is empty, defaulted to classification."
+
+    dtype = str(series.dtype).lower()
+    unique_values = int(series.nunique())
+    sample_size = int(len(series))
+
+    if any(token in dtype for token in ("object", "string", "bool", "category")):
+        return (
+            "classification",
+            "high",
+            f"Target column '{target_column}' is categorical ({dtype}), so classification is recommended.",
+        )
+
+    if unique_values <= min(20, max(2, int(sample_size * 0.15))):
+        return (
+            "classification",
+            "medium",
+            f"Target column '{target_column}' has only {unique_values} distinct values, so classification is likely.",
+        )
+
+    return (
+        "regression",
+        "high",
+        f"Target column '{target_column}' is numeric with {unique_values} distinct values, so regression is recommended.",
+    )
+
+
+def _suggest_target_column(columns: list[str], dtypes: dict[str, str]) -> tuple[str | None, str]:
+    """Suggest a likely target column by name and type heuristics."""
+    if not columns:
+        return None, "No columns were found in the dataset."
+
+    preferred = [
+        "target",
+        "label",
+        "class",
+        "outcome",
+        "y",
+        "default",
+        "risk",
+        "churn",
+        "fraud",
+        "approved",
+        "prediction",
+    ]
+    normalized = {col.lower(): col for col in columns}
+    for keyword in preferred:
+        if keyword in normalized:
+            return normalized[
+                keyword
+            ], f"Column '{normalized[keyword]}' matched common target naming pattern '{keyword}'."
+
+    candidate = columns[-1]
+    candidate_dtype = dtypes.get(candidate, "unknown")
+    return candidate, f"No explicit target keyword found; selected last column '{candidate}' ({candidate_dtype})."
+
+
+def _normalize_dataset_name(name: str) -> str:
+    """Normalize a human-readable dataset name from text source."""
+    compact = " ".join(name.replace("_", " ").replace("-", " ").split())
+    if not compact:
+        return "Dataset"
+    return compact[:255]
 
 
 def get_ingestion_service(
@@ -52,7 +130,7 @@ def get_versioning_service(
 @router.post("", response_model=DatasetRead, status_code=status.HTTP_201_CREATED)
 async def upload_dataset(
     file: Annotated[UploadFile, File(description="Dataset file (CSV, JSON, Parquet, Excel)")],
-    name: Annotated[str, Form(description="Dataset name")],
+    name: Annotated[str | None, Form(description="Dataset name")] = None,
     description: Annotated[str | None, Form(description="Dataset description")] = None,
     db: AsyncSession = Depends(get_db_session),
     ingestion: DatasetIngestionService = Depends(get_ingestion_service),
@@ -77,9 +155,12 @@ async def upload_dataset(
     df = ingestion.load_dataframe(result["file_path"], result["file_format"])
     validation_report = validation.validate(df)
 
+    detected_name = _normalize_dataset_name(Path(file.filename or "dataset").stem)
+    final_name = _normalize_dataset_name(name) if name else detected_name
+
     dataset = Dataset(
         id=dataset_id,
-        name=name,
+        name=final_name,
         description=description,
         dataset_type=dataset_type,
         status=DatasetStatus.VALIDATED if validation_report.is_valid else DatasetStatus.FAILED,
@@ -95,9 +176,52 @@ async def upload_dataset(
     db.add(dataset)
     await db.flush()
 
-    logger.info("dataset_uploaded", dataset_id=str(dataset_id), name=name, status=dataset.status.value)
+    logger.info("dataset_uploaded", dataset_id=str(dataset_id), name=final_name, status=dataset.status.value)
 
     return dataset
+
+
+@router.get("/{dataset_id}/autoconfig", response_model=DatasetAutoConfigRead)
+async def get_dataset_auto_config(
+    dataset_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    ingestion: DatasetIngestionService = Depends(get_ingestion_service),
+) -> DatasetAutoConfigRead:
+    """Return auto-detected configuration for a dataset.
+
+    The endpoint proposes a target column, feature columns, task type,
+    and stratify suggestion for non-technical users.
+    """
+    result = await db.execute(select(Dataset).where(Dataset.id == dataset_id))
+    dataset = result.scalar_one_or_none()
+
+    if not dataset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
+
+    try:
+        df = ingestion.load_dataframe(dataset.file_path, dataset.file_format)
+    except IngestionError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unable to inspect dataset: {exc}")
+
+    columns = [str(c) for c in list(df.columns)]
+    dtypes = {str(col): str(dtype) for col, dtype in df.dtypes.items()}
+    target_column, target_rationale = _suggest_target_column(columns, dtypes)
+    task_type, confidence, task_rationale = _guess_task_type(df, target_column)
+
+    feature_columns = [col for col in columns if col != target_column]
+    stratify_column = target_column if task_type == "classification" and target_column else None
+    suggested_name = _normalize_dataset_name(dataset.name)
+
+    return DatasetAutoConfigRead(
+        dataset_id=dataset.id,
+        suggested_name=suggested_name,
+        task_type=task_type,
+        target_column=target_column,
+        feature_columns=feature_columns,
+        stratify_column=stratify_column,
+        confidence=confidence,
+        rationale=f"{target_rationale} {task_rationale}",
+    )
 
 
 @router.get("", response_model=DatasetListResponse)

@@ -1,0 +1,21 @@
+# /home/jao/Desktop/sandbox-project-vibecoded/.dockerignore
+.git
+.gitignore
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+frontend/node_modules
+frontend/dist
+frontend/*.tsbuildinfo
+
+tests
+technical_documents_promised_features
+docs
+infra
+
+opencode.json
+opencode.local.json
+open.json
