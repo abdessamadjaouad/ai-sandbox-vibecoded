@@ -13,6 +13,8 @@ interface Step4RunPageProps {
   defaultName: string;
   defaultDescription: string;
   randomSeed: number;
+  progressMessage: string;
+  onRetry: () => Promise<void>;
   onSubmit: (payload: { name: string; description: string; randomSeed: number }) => Promise<void>;
 }
 
@@ -26,6 +28,8 @@ export const Step4RunPage = ({
   defaultName,
   defaultDescription,
   randomSeed,
+  progressMessage,
+  onRetry,
   onSubmit,
 }: Step4RunPageProps) => {
   const [name, setName] = useState(defaultName);
@@ -84,10 +88,10 @@ export const Step4RunPage = ({
         <article className="glass-card dataset-card">
           <h3>Run monitor</h3>
 
-          {loading ? <SpinnerPanel text="Preparing run..." /> : null}
+          {loading ? <SpinnerPanel text={progressMessage || "Preparing run..."} /> : null}
 
           {!loading && (runningState === "running" || runningState === "polling") ? (
-            <SpinnerPanel text="Experiment is running. Benchmarking models now..." />
+            <SpinnerPanel text={progressMessage || "Experiment is running. Benchmarking models now..."} />
           ) : null}
 
           {experiment ? (
@@ -106,6 +110,12 @@ export const Step4RunPage = ({
             <p className="muted">No run started yet.</p>
           )}
 
+          {runningState === "failed" ? (
+            <button type="button" className="btn btn-ghost" onClick={() => void onRetry()}>
+              Try again with same setup
+            </button>
+          ) : null}
+
           <div className="chip-grid">
             {selectedModels.map((model) => (
               <span key={model.name} className="chip is-active">
@@ -116,7 +126,7 @@ export const Step4RunPage = ({
         </article>
       </div>
 
-      {error ? <p className="error-banner">{error}</p> : null}
+      {error ? <p className="error-banner">Run failed: {error}. You can fix settings or retry.</p> : null}
     </section>
   );
 };

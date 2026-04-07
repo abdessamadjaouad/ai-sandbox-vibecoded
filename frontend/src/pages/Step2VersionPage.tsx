@@ -1,5 +1,5 @@
 // /home/jao/Desktop/sandbox-project-vibecoded/frontend/src/pages/Step2VersionPage.tsx
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { DatasetRead, DatasetVersionRead } from "../types";
 import { SpinnerPanel } from "../components/SpinnerPanel";
 
@@ -8,8 +8,21 @@ interface Step2VersionPageProps {
   versions: DatasetVersionRead[];
   selectedVersion: DatasetVersionRead | null;
   columns: string[];
+  taskType: "classification" | "regression";
   loading: boolean;
   error: string | null;
+  trainRatio: number;
+  valRatio: number;
+  testRatio: number;
+  randomSeed: number;
+  stratifyColumn: string;
+  onAdvancedChange: (patch: {
+    trainRatio?: number;
+    valRatio?: number;
+    testRatio?: number;
+    randomSeed?: number;
+    stratifyColumn?: string;
+  }) => void;
   onCreateVersion: (payload: {
     train_ratio: number;
     val_ratio: number;
@@ -25,18 +38,19 @@ export const Step2VersionPage = ({
   versions,
   selectedVersion,
   columns,
+  taskType,
   loading,
   error,
+  trainRatio,
+  valRatio,
+  testRatio,
+  randomSeed,
+  stratifyColumn,
+  onAdvancedChange,
   onCreateVersion,
   onSelectVersion,
 }: Step2VersionPageProps) => {
-  const [train, setTrain] = useState(0.7);
-  const [val, setVal] = useState(0.15);
-  const [test, setTest] = useState(0.15);
-  const [seed, setSeed] = useState(42);
-  const [stratify, setStratify] = useState("");
-
-  const total = useMemo(() => Number((train + val + test).toFixed(2)), [train, val, test]);
+  const total = useMemo(() => Number((trainRatio + valRatio + testRatio).toFixed(2)), [trainRatio, valRatio, testRatio]);
 
   const create = async () => {
     if (!dataset) {
@@ -44,11 +58,11 @@ export const Step2VersionPage = ({
     }
 
     await onCreateVersion({
-      train_ratio: train,
-      val_ratio: val,
-      test_ratio: test,
-      random_seed: seed,
-      stratify_column: stratify || undefined,
+      train_ratio: trainRatio,
+      val_ratio: valRatio,
+      test_ratio: testRatio,
+      random_seed: randomSeed,
+      stratify_column: stratifyColumn || undefined,
     });
   };
 
@@ -68,72 +82,91 @@ export const Step2VersionPage = ({
     <section className="step-content">
       <header>
         <p className="eyebrow">Step 2</p>
-        <h2>Prepare training split</h2>
-        <p>Define train/validation/test ratios once. Every model will be compared on the same split.</p>
+        <h2>Create benchmark-ready split</h2>
+        <p>
+          Use the recommended split to continue fast. Open advanced settings only if you want to tune technical options.
+        </p>
       </header>
 
       <div className="grid-two">
         <article className="glass-card form-card">
-          <h3>Split configuration</h3>
-
-          <label>
-            Train ratio ({Math.round(train * 100)}%)
-            <input
-              type="range"
-              min={0.5}
-              max={0.9}
-              step={0.05}
-              value={train}
-              onChange={(event) => setTrain(Number(event.target.value))}
-            />
-          </label>
-
-          <label>
-            Validation ratio ({Math.round(val * 100)}%)
-            <input
-              type="range"
-              min={0}
-              max={0.4}
-              step={0.05}
-              value={val}
-              onChange={(event) => setVal(Number(event.target.value))}
-            />
-          </label>
-
-          <label>
-            Test ratio ({Math.round(test * 100)}%)
-            <input
-              type="range"
-              min={0}
-              max={0.4}
-              step={0.05}
-              value={test}
-              onChange={(event) => setTest(Number(event.target.value))}
-            />
-          </label>
-
-          <label>
-            Random seed
-            <input type="number" value={seed} min={0} onChange={(event) => setSeed(Number(event.target.value))} />
-          </label>
-
-          <label>
-            Stratify column (optional)
-            <select value={stratify} onChange={(event) => setStratify(event.target.value)}>
-              <option value="">None</option>
-              {columns.map((column) => (
-                <option key={column} value={column}>
-                  {column}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <p className={total === 1 ? "muted" : "error-banner"}>Total ratio: {total} (must be 1.0)</p>
+          <h3>Recommended configuration</h3>
+          <p className="muted">
+            Task type: <strong>{taskType}</strong> · Train {Math.round(trainRatio * 100)}% · Validation {Math.round(valRatio * 100)}%
+            {", "}
+            Test {Math.round(testRatio * 100)}%
+          </p>
 
           <button className="btn btn-primary" disabled={loading || total !== 1} onClick={create}>
-            Create Version
+            Create Recommended Split
           </button>
+
+          <details className="advanced-panel">
+            <summary>Advanced settings</summary>
+
+            <label>
+              Train ratio ({Math.round(trainRatio * 100)}%)
+              <input
+                type="range"
+                min={0.5}
+                max={0.9}
+                step={0.05}
+                value={trainRatio}
+                onChange={(event) => onAdvancedChange({ trainRatio: Number(event.target.value) })}
+              />
+            </label>
+
+            <label>
+              Validation ratio ({Math.round(valRatio * 100)}%)
+              <input
+                type="range"
+                min={0}
+                max={0.4}
+                step={0.05}
+                value={valRatio}
+                onChange={(event) => onAdvancedChange({ valRatio: Number(event.target.value) })}
+              />
+            </label>
+
+            <label>
+              Test ratio ({Math.round(testRatio * 100)}%)
+              <input
+                type="range"
+                min={0}
+                max={0.4}
+                step={0.05}
+                value={testRatio}
+                onChange={(event) => onAdvancedChange({ testRatio: Number(event.target.value) })}
+              />
+            </label>
+
+            <label>
+              Random seed
+              <input
+                type="number"
+                value={randomSeed}
+                min={0}
+                onChange={(event) => onAdvancedChange({ randomSeed: Number(event.target.value) })}
+              />
+            </label>
+
+            <label>
+              Stratify column (optional)
+              <select
+                value={stratifyColumn}
+                onChange={(event) => onAdvancedChange({ stratifyColumn: event.target.value })}
+              >
+                <option value="">None</option>
+                {columns.map((column) => (
+                  <option key={column} value={column}>
+                    {column}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </details>
+
+          <p className={total === 1 ? "muted" : "error-banner"}>Total ratio: {total} (must be 1.0)</p>
         </article>
 
         <article className="glass-card dataset-card">

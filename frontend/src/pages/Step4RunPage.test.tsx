@@ -30,6 +30,8 @@ describe("Step4RunPage", () => {
         defaultName="Credit benchmark"
         defaultDescription=""
         randomSeed={42}
+        progressMessage="Ready to launch"
+        onRetry={vi.fn()}
         onSubmit={onSubmit}
       />
     );
@@ -59,6 +61,8 @@ describe("Step4RunPage", () => {
         defaultName="Credit benchmark"
         defaultDescription=""
         randomSeed={42}
+        progressMessage="Benchmark in progress"
+        onRetry={vi.fn()}
         onSubmit={vi.fn()}
       />
     );

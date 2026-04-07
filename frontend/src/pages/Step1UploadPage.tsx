@@ -8,23 +8,31 @@ interface Step1UploadPageProps {
   selectedDataset: DatasetRead | null;
   loading: boolean;
   error: string | null;
+  autoTaskType: "classification" | "regression" | null;
   onUpload: (file: File, name: string, description: string) => Promise<void>;
   onSelectDataset: (dataset: DatasetRead) => void;
-  onTaskTypeChange: (task: "classification" | "regression") => void;
-  taskType: "classification" | "regression";
 }
+
+const normalizeNameFromFile = (filename: string): string => {
+  const withoutExt = filename.replace(/\.[^/.]+$/, "");
+  const normalized = withoutExt.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "Dataset";
+  }
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
 
 export const Step1UploadPage = ({
   datasets,
   selectedDataset,
   loading,
   error,
+  autoTaskType,
   onUpload,
   onSelectDataset,
-  onTaskTypeChange,
-  taskType,
 }: Step1UploadPageProps) => {
   const [name, setName] = useState("");
+  const [nameEdited, setNameEdited] = useState(false);
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
@@ -42,41 +50,36 @@ export const Step1UploadPage = ({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!file || !name.trim()) {
+    if (!file) {
       return;
     }
     await onUpload(file, name.trim(), description.trim());
     setName("");
+    setNameEdited(false);
     setDescription("");
     setFile(null);
+  };
+
+  const handleFileSelected = (nextFile: File | null) => {
+    setFile(nextFile);
+    if (!nextFile) {
+      return;
+    }
+    if (!nameEdited || !name.trim()) {
+      setName(normalizeNameFromFile(nextFile.name));
+    }
   };
 
   return (
     <section className="step-content">
       <header>
         <p className="eyebrow">Step 1</p>
-        <h2>Upload your dataset</h2>
+        <h2>Upload your dataset once</h2>
         <p>
-          Add a CSV, JSON, Parquet, or Excel file. We will validate quality automatically before moving to modeling.
+          Add a CSV, JSON, Parquet, or Excel file. We detect the dataset name, target column, task type, and features
+          automatically.
         </p>
       </header>
-
-      <div className="task-toggle" role="radiogroup" aria-label="Task type">
-        <button
-          type="button"
-          className={`task-toggle__item ${taskType === "classification" ? "is-active" : ""}`}
-          onClick={() => onTaskTypeChange("classification")}
-        >
-          Classification
-        </button>
-        <button
-          type="button"
-          className={`task-toggle__item ${taskType === "regression" ? "is-active" : ""}`}
-          onClick={() => onTaskTypeChange("regression")}
-        >
-          Regression
-        </button>
-      </div>
 
       <div className="grid-two">
         <form className="glass-card form-card" onSubmit={submit}>
@@ -87,11 +90,15 @@ export const Step1UploadPage = ({
             <input
               type="text"
               value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Credit Risk - Q2"
-              required
+              onChange={(event) => {
+                setName(event.target.value);
+                setNameEdited(true);
+              }}
+              placeholder="Will be filled from file name"
             />
           </label>
+
+          <p className="muted">The name is auto-detected from the file. You can edit it any time.</p>
 
           <label>
             Description
@@ -107,14 +114,14 @@ export const Step1UploadPage = ({
             Data file
             <input
               type="file"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => handleFileSelected(event.target.files?.[0] ?? null)}
               accept=".csv,.json,.jsonl,.parquet,.xlsx,.xls"
               required
             />
           </label>
 
-          <button className="btn btn-primary" disabled={loading || !file || !name.trim()}>
-            Upload and Validate
+          <button className="btn btn-primary" disabled={loading || !file}>
+            Upload and Auto-Configure
           </button>
         </form>
 
@@ -151,7 +158,7 @@ export const Step1UploadPage = ({
 
       {selectedPreview ? (
         <article className="glass-card preview-card">
-          <h3>Selected dataset preview</h3>
+          <h3>Auto-detected preview</h3>
           <ul>
             <li>
               <strong>Rows:</strong> {selectedPreview.rows}
@@ -161,6 +168,9 @@ export const Step1UploadPage = ({
             </li>
             <li>
               <strong>Quality check:</strong> {selectedPreview.quality}
+            </li>
+            <li>
+              <strong>Detected task type:</strong> {autoTaskType ?? "pending detection"}
             </li>
           </ul>
         </article>

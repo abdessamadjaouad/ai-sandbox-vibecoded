@@ -4,6 +4,9 @@ import { SpinnerPanel } from "../components/SpinnerPanel";
 
 interface Step3ModelPageProps {
   columns: string[];
+  taskType: "classification" | "regression";
+  autoConfigConfidence: "low" | "medium" | "high" | null;
+  autoConfigRationale: string | null;
   targetColumn: string;
   selectedFeatures: string[];
   models: ModelCatalogueEntry[];
@@ -17,6 +20,9 @@ interface Step3ModelPageProps {
 
 export const Step3ModelPage = ({
   columns,
+  taskType,
+  autoConfigConfidence,
+  autoConfigRationale,
   targetColumn,
   selectedFeatures,
   models,
@@ -31,9 +37,20 @@ export const Step3ModelPage = ({
     <section className="step-content">
       <header>
         <p className="eyebrow">Step 3</p>
-        <h2>Choose target, features, and models</h2>
-        <p>Pick what to predict and which models to benchmark side-by-side.</p>
+        <h2>Review detected setup and models</h2>
+        <p>Everything is pre-selected for you. Adjust only if needed.</p>
       </header>
+
+      {autoConfigRationale ? (
+        <article className="glass-card confidence-card">
+          <p>
+            <strong>Auto-detection:</strong> {autoConfigRationale}
+          </p>
+          <p className="muted">
+            Detected task type: <strong>{taskType}</strong> · Confidence: <strong>{autoConfigConfidence ?? "low"}</strong>
+          </p>
+        </article>
+      ) : null}
 
       <div className="grid-two">
         <article className="glass-card form-card">

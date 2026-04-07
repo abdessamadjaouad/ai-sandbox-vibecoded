@@ -22,6 +22,9 @@ describe("Step3ModelPage", () => {
     render(
       <Step3ModelPage
         columns={["age", "income", "target"]}
+        taskType="classification"
+        autoConfigConfidence="high"
+        autoConfigRationale="Detected target column automatically."
         targetColumn=""
         selectedFeatures={[]}
         models={[modelFixture]}
@@ -46,6 +49,9 @@ describe("Step3ModelPage", () => {
     render(
       <Step3ModelPage
         columns={["age", "income", "target"]}
+        taskType="classification"
+        autoConfigConfidence="high"
+        autoConfigRationale="Detected target column automatically."
         targetColumn="target"
         selectedFeatures={["age", "income"]}
         models={[modelFixture]}

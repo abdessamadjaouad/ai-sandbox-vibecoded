@@ -1,15 +1,16 @@
 // /home/jao/Desktop/sandbox-project-vibecoded/frontend/src/App.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ActionBar } from "./components/ActionBar";
-import { ProgressRail } from "./components/ProgressRail";
+import { useCallback, useEffect, useState } from "react";
+
 import { useApi } from "./hooks/useApi";
+import { LandingPage } from "./pages/LandingPage";
 import { Step1UploadPage } from "./pages/Step1UploadPage";
 import { Step2VersionPage } from "./pages/Step2VersionPage";
 import { Step3ModelPage } from "./pages/Step3ModelPage";
 import { Step4RunPage } from "./pages/Step4RunPage";
 import { Step5ReportPage } from "./pages/Step5ReportPage";
-import { WIZARD_STEPS, useWizardStore } from "./store/wizardStore";
+import { useWizardStore, WIZARD_STEPS } from "./store/wizardStore";
 import type {
+  DatasetAutoConfigRead,
   DatasetRead,
   DatasetVersionRead,
   EvaluationReportResponse,
@@ -17,336 +18,549 @@ import type {
   ExperimentResultRead,
   ExperimentSummary,
   ModelCatalogueEntry,
-  TaskType,
 } from "./types";
 
+import dxcLogo from "../dxc-logo.png";
+
+type AppView = "landing" | "wizard";
+type Theme = "light" | "dark";
+type RunningState = "idle" | "creating" | "running" | "polling" | "completed" | "failed";
+
 export const App = () => {
-  const {
-    step,
-    draft,
-    progress,
-    canGoBack,
-    canGoForward,
-    previousStep,
-    goToStep,
-    updateDraft,
-  } = useWizardStore();
+  // Navigation and theming
+  const [view, setView] = useState<AppView>("landing");
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("ai-sandbox-theme");
+      if (stored === "dark" || stored === "light") {
+        return stored;
+      }
+    }
+    return "light";
+  });
+
+  // Wizard state
+  const wizard = useWizardStore();
+
+  // API hook
   const api = useApi();
 
+  // Data state
   const [datasets, setDatasets] = useState<DatasetRead[]>([]);
   const [versions, setVersions] = useState<DatasetVersionRead[]>([]);
   const [models, setModels] = useState<ModelCatalogueEntry[]>([]);
+  const [autoConfig, setAutoConfig] = useState<DatasetAutoConfigRead | null>(null);
+
+  // Experiment state
   const [experiment, setExperiment] = useState<ExperimentRead | null>(null);
   const [summary, setSummary] = useState<ExperimentSummary | null>(null);
   const [results, setResults] = useState<ExperimentResultRead[]>([]);
   const [report, setReport] = useState<EvaluationReportResponse | null>(null);
-  const [runState, setRunState] = useState<"idle" | "creating" | "running" | "polling" | "completed" | "failed">(
-    "idle"
-  );
+  const [runState, setRunState] = useState<RunningState>("idle");
+  const [progressMessage, setProgressMessage] = useState("");
 
-  const pollingRef = useRef<number | null>(null);
-
-  const columns = useMemo(() => draft.dataset?.schema_info?.columns ?? [], [draft.dataset]);
-
-  const clearPoll = () => {
-    if (pollingRef.current) {
-      window.clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  };
-
+  // Theme effect
   useEffect(() => {
-    void (async () => {
-      try {
-        const items = await api.listDatasets();
-        setDatasets(items);
-      } catch {
-        // handled by hook error
-      }
-    })();
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("ai-sandbox-theme", theme);
+  }, [theme]);
+
+  // Toggle theme handler
+  const toggleTheme = useCallback(() => {
+    setTheme((current) => (current === "light" ? "dark" : "light"));
   }, []);
 
+  // Start wizard
+  const startWizard = useCallback(() => {
+    setView("wizard");
+    wizard.resetWizard();
+    setAutoConfig(null);
+    setExperiment(null);
+    setSummary(null);
+    setResults([]);
+    setReport(null);
+    setRunState("idle");
+    setProgressMessage("");
+  }, [wizard]);
+
+  // Load datasets on mount
   useEffect(() => {
-    if (!draft.dataset) {
+    const load = async () => {
+      try {
+        const list = await api.listDatasets();
+        setDatasets(list);
+      } catch {
+        // Ignore errors on initial load
+      }
+    };
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load dataset versions when dataset changes
+  useEffect(() => {
+    if (!wizard.draft.dataset) {
       setVersions([]);
       return;
     }
-
-    void (async () => {
+    const load = async () => {
       try {
-        const nextVersions = await api.listDatasetVersions(draft.dataset!.id);
-        setVersions(nextVersions);
+        const list = await api.listDatasetVersions(wizard.draft.dataset!.id);
+        setVersions(list);
       } catch {
-        // handled by hook error
+        // Ignore
       }
-    })();
-  }, [draft.dataset?.id]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const nextModels = await api.listModels(draft.taskType);
-        setModels(nextModels);
-      } catch {
-        // handled by hook error
-      }
-    })();
-  }, [draft.taskType]);
-
-  useEffect(() => {
-    return () => {
-      clearPoll();
     };
-  }, []);
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizard.draft.dataset?.id]);
 
-  const handleDatasetUpload = async (file: File, name: string, description: string) => {
-    const uploaded = await api.uploadDataset(file, name, description);
-    const nextDatasets = await api.listDatasets();
-    setDatasets(nextDatasets);
-    updateDraft({ dataset: uploaded, datasetVersion: null, targetColumn: "", selectedFeatures: [] });
-  };
-
-  const handleCreateVersion = async (payload: {
-    train_ratio: number;
-    val_ratio: number;
-    test_ratio: number;
-    random_seed: number;
-    stratify_column?: string;
-  }) => {
-    if (!draft.dataset) {
-      return;
-    }
-
-    const version = await api.createDatasetVersion(draft.dataset.id, payload);
-    const nextVersions = await api.listDatasetVersions(draft.dataset.id);
-    setVersions(nextVersions);
-    updateDraft({ datasetVersion: version });
-  };
-
-  const handleToggleFeature = (feature: string) => {
-    if (draft.selectedFeatures.includes(feature)) {
-      updateDraft({ selectedFeatures: draft.selectedFeatures.filter((f) => f !== feature) });
-      return;
-    }
-
-    updateDraft({ selectedFeatures: [...draft.selectedFeatures, feature] });
-  };
-
-  const handleToggleModel = (model: ModelCatalogueEntry) => {
-    const exists = draft.selectedModels.some((entry) => entry.name === model.name);
-    if (exists) {
-      updateDraft({ selectedModels: draft.selectedModels.filter((entry) => entry.name !== model.name) });
-      return;
-    }
-
-    updateDraft({ selectedModels: [...draft.selectedModels, model] });
-  };
-
-  const enforceStepGuards = (next: number): number => {
-    if (next > 1 && !draft.dataset) {
-      return 1;
-    }
-
-    if (next > 2 && !draft.datasetVersion) {
-      return 2;
-    }
-
-    if (next > 3 && (!draft.targetColumn || draft.selectedFeatures.length === 0 || draft.selectedModels.length === 0)) {
-      return 3;
-    }
-
-    if (next > 4 && !experiment) {
-      return 4;
-    }
-
-    return next;
-  };
-
-  const navigateNext = () => {
-    const target = enforceStepGuards(step + 1);
-    goToStep(target);
-  };
-
-  const navigateBack = () => {
-    previousStep();
-  };
-
-  const navigateTo = (next: number) => {
-    const guarded = enforceStepGuards(next);
-    goToStep(guarded);
-  };
-
-  const pollExperimentUntilDone = (experimentId: string) => {
-    clearPoll();
-    setRunState("polling");
-
-    pollingRef.current = window.setInterval(async () => {
+  // Load models when task type changes
+  useEffect(() => {
+    const load = async () => {
       try {
-        const latest = await api.getExperiment(experimentId);
-        setExperiment(latest);
-
-        if (latest.status === "completed" || latest.status === "failed") {
-          clearPoll();
-
-          const [nextSummary, nextResults] = await Promise.all([
-            api.getExperimentSummary(experimentId),
-            api.getExperimentResults(experimentId),
-          ]);
-
-          setSummary(nextSummary);
-          setResults(nextResults);
-
-          if (latest.status === "completed") {
-            const nextReport = await api.generateReport(experimentId);
-            setReport(nextReport);
-            setRunState("completed");
-            goToStep(5);
-          } else {
-            setRunState("failed");
-          }
-        }
+        const list = await api.listModels(wizard.draft.taskType);
+        setModels(list);
+        // Auto-select all models
+        wizard.updateDraft({ selectedModels: list });
       } catch {
-        clearPoll();
-        setRunState("failed");
+        // Ignore
       }
-    }, 2500);
-  };
+    };
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizard.draft.taskType]);
 
-  const handleCreateAndRun = async (payload: { name: string; description: string; randomSeed: number }) => {
-    if (!draft.dataset || !draft.datasetVersion || !draft.targetColumn || draft.selectedFeatures.length === 0) {
+  // Upload dataset handler
+  const handleUpload = useCallback(
+    async (file: File, name: string, description: string) => {
+      const newDataset = await api.uploadDataset(file, name, description);
+      setDatasets((prev) => [newDataset, ...prev]);
+
+      // Auto-select the uploaded dataset
+      wizard.updateDraft({ dataset: newDataset });
+
+      // Fetch auto-config
+      try {
+        const config = await api.getDatasetAutoConfig(newDataset.id);
+        setAutoConfig(config);
+        applyAutoConfig(config);
+      } catch {
+        // Ignore auto-config errors
+      }
+    },
+    [api, wizard]
+  );
+
+  // Select dataset handler
+  const handleSelectDataset = useCallback(
+    async (dataset: DatasetRead) => {
+      wizard.updateDraft({ dataset });
+
+      // Fetch auto-config for selected dataset
+      try {
+        const config = await api.getDatasetAutoConfig(dataset.id);
+        setAutoConfig(config);
+        applyAutoConfig(config);
+      } catch {
+        setAutoConfig(null);
+      }
+    },
+    [api, wizard]
+  );
+
+  // Apply auto-config to wizard draft
+  const applyAutoConfig = useCallback(
+    (config: DatasetAutoConfigRead) => {
+      wizard.updateDraft({
+        taskType: config.task_type,
+        targetColumn: config.target_column ?? "",
+        selectedFeatures: config.feature_columns,
+        stratifyColumn: config.stratify_column ?? "",
+        experimentName: config.suggested_name ? `Benchmark: ${config.suggested_name}` : "",
+      });
+    },
+    [wizard]
+  );
+
+  // Create dataset version handler
+  const handleCreateVersion = useCallback(
+    async (payload: {
+      train_ratio: number;
+      val_ratio: number;
+      test_ratio: number;
+      random_seed: number;
+      stratify_column?: string;
+    }) => {
+      if (!wizard.draft.dataset) {
+        return;
+      }
+      const newVersion = await api.createDatasetVersion(wizard.draft.dataset.id, payload);
+      setVersions((prev) => [...prev, newVersion]);
+      wizard.updateDraft({ datasetVersion: newVersion });
+    },
+    [api, wizard]
+  );
+
+  // Select version handler
+  const handleSelectVersion = useCallback(
+    (version: DatasetVersionRead) => {
+      wizard.updateDraft({ datasetVersion: version });
+    },
+    [wizard]
+  );
+
+  // Toggle feature handler
+  const handleToggleFeature = useCallback(
+    (column: string) => {
+      const current = wizard.draft.selectedFeatures;
+      const next = current.includes(column)
+        ? current.filter((c) => c !== column)
+        : [...current, column];
+      wizard.updateDraft({ selectedFeatures: next });
+    },
+    [wizard]
+  );
+
+  // Toggle model handler
+  const handleToggleModel = useCallback(
+    (model: ModelCatalogueEntry) => {
+      const current = wizard.draft.selectedModels;
+      const exists = current.some((m) => m.name === model.name);
+      const next = exists
+        ? current.filter((m) => m.name !== model.name)
+        : [...current, model];
+      wizard.updateDraft({ selectedModels: next });
+    },
+    [wizard]
+  );
+
+  // Advanced settings change handler
+  const handleAdvancedChange = useCallback(
+    (patch: {
+      trainRatio?: number;
+      valRatio?: number;
+      testRatio?: number;
+      randomSeed?: number;
+      stratifyColumn?: string;
+    }) => {
+      wizard.updateDraft(patch);
+    },
+    [wizard]
+  );
+
+  // Run experiment handler
+  const handleRunExperiment = useCallback(
+    async (payload: { name: string; description: string; randomSeed: number }) => {
+      if (!wizard.draft.dataset || !wizard.draft.datasetVersion) {
+        return;
+      }
+
+      setRunState("creating");
+      setProgressMessage("Creating experiment...");
+
+      try {
+        // Create experiment
+        const expPayload = {
+          name: payload.name,
+          description: payload.description || null,
+          experiment_type: "tabular_ml" as const,
+          task_type: wizard.draft.taskType,
+          dataset_id: wizard.draft.dataset.id,
+          dataset_version_id: wizard.draft.datasetVersion.id,
+          target_column: wizard.draft.targetColumn,
+          feature_columns: wizard.draft.selectedFeatures,
+          models: wizard.draft.selectedModels.map((m) => ({
+            name: m.name,
+            family: m.family,
+            class_name: m.class_name,
+            hyperparameters: m.default_hyperparameters,
+            enabled: true,
+          })),
+          random_seed: payload.randomSeed,
+        };
+
+        const createdExperiment = await api.createExperiment(expPayload);
+        setExperiment(createdExperiment);
+
+        // Run experiment
+        setRunState("running");
+        setProgressMessage("Training models. This may take a few minutes...");
+
+        const ranExperiment = await api.runExperiment(createdExperiment.id);
+        setExperiment(ranExperiment);
+
+        // Poll for completion
+        setRunState("polling");
+        setProgressMessage("Waiting for benchmark to complete...");
+
+        let finalExperiment = ranExperiment;
+        let pollAttempts = 0;
+        const maxPolls = 120; // 2 minutes max
+
+        while (
+          finalExperiment.status !== "completed" &&
+          finalExperiment.status !== "failed" &&
+          pollAttempts < maxPolls
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          finalExperiment = await api.getExperiment(createdExperiment.id);
+          setExperiment(finalExperiment);
+          setProgressMessage(`Status: ${finalExperiment.status}...`);
+          pollAttempts++;
+        }
+
+        if (finalExperiment.status === "completed") {
+          setRunState("completed");
+          setProgressMessage("Benchmark completed!");
+
+          // Fetch results and summary
+          const [expSummary, expResults] = await Promise.all([
+            api.getExperimentSummary(createdExperiment.id),
+            api.getExperimentResults(createdExperiment.id),
+          ]);
+          setSummary(expSummary);
+          setResults(expResults);
+
+          // Generate report
+          try {
+            const expReport = await api.generateReport(createdExperiment.id);
+            setReport(expReport);
+          } catch {
+            // Report generation is optional
+          }
+
+          // Auto-advance to report step
+          wizard.goToStep(5);
+        } else {
+          setRunState("failed");
+          setProgressMessage(finalExperiment.error_message ?? "Experiment failed.");
+        }
+      } catch (err) {
+        setRunState("failed");
+        setProgressMessage(err instanceof Error ? err.message : "An error occurred.");
+      }
+    },
+    [api, wizard]
+  );
+
+  // Retry handler
+  const handleRetry = useCallback(async () => {
+    if (!experiment) {
       return;
     }
-
-    setRunState("creating");
-
-    const modelsPayload = draft.selectedModels.map((model) => ({
-      name: model.name,
-      family: model.family,
-      class_name: model.class_name,
-      hyperparameters: model.default_hyperparameters,
-      enabled: true,
-    }));
-
-    const created = await api.createExperiment({
-      name: payload.name,
-      description: payload.description || null,
-      experiment_type: "tabular_ml",
-      task_type: draft.taskType,
-      dataset_id: draft.dataset.id,
-      dataset_version_id: draft.datasetVersion.id,
-      target_column: draft.targetColumn,
-      feature_columns: draft.selectedFeatures,
-      models: modelsPayload,
-      random_seed: payload.randomSeed,
-    });
-
-    setExperiment(created);
     setRunState("running");
+    setProgressMessage("Retrying experiment...");
 
-    const started = await api.runExperiment(created.id);
-    setExperiment(started);
+    try {
+      const ranExperiment = await api.runExperiment(experiment.id);
+      setExperiment(ranExperiment);
 
-    pollExperimentUntilDone(started.id);
-  };
+      // Poll again
+      setRunState("polling");
+      let finalExperiment = ranExperiment;
+      let pollAttempts = 0;
 
-  const currentStepTitle = WIZARD_STEPS.find((entry) => entry.id === step)?.title ?? "Wizard";
+      while (
+        finalExperiment.status !== "completed" &&
+        finalExperiment.status !== "failed" &&
+        pollAttempts < 120
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        finalExperiment = await api.getExperiment(experiment.id);
+        setExperiment(finalExperiment);
+        setProgressMessage(`Status: ${finalExperiment.status}...`);
+        pollAttempts++;
+      }
 
+      if (finalExperiment.status === "completed") {
+        setRunState("completed");
+
+        const [expSummary, expResults] = await Promise.all([
+          api.getExperimentSummary(experiment.id),
+          api.getExperimentResults(experiment.id),
+        ]);
+        setSummary(expSummary);
+        setResults(expResults);
+
+        try {
+          const expReport = await api.generateReport(experiment.id);
+          setReport(expReport);
+        } catch {
+          // Ignore
+        }
+
+        wizard.goToStep(5);
+      } else {
+        setRunState("failed");
+        setProgressMessage(finalExperiment.error_message ?? "Retry failed.");
+      }
+    } catch (err) {
+      setRunState("failed");
+      setProgressMessage(err instanceof Error ? err.message : "Retry failed.");
+    }
+  }, [api, experiment, wizard]);
+
+  // Get columns from dataset
+  const columns = wizard.draft.dataset?.schema_info?.columns ?? [];
+
+  // Render landing page
+  if (view === "landing") {
+    return (
+      <LandingPage
+        logoSrc={dxcLogo}
+        onStartWizard={startWizard}
+        onToggleTheme={toggleTheme}
+        theme={theme}
+        apiDocsUrl={`${api.apiBaseUrl.replace("/api/v1", "")}/docs`}
+        datasetsCount={datasets.length}
+      />
+    );
+  }
+
+  // Render wizard
   return (
-    <div className="app-shell">
-      <ProgressRail currentStep={step} progress={progress} onStepClick={navigateTo} />
-
-      <main className="workspace">
-        <div className="workspace__header">
+    <main className="wizard-shell">
+      <header className="wizard-header glass-card">
+        <div className="brand-inline">
+          <img src={dxcLogo} alt="DXC logo" className="brand-inline__logo" />
           <div>
-            <p className="eyebrow">Decision Assistant</p>
-            <h2>{currentStepTitle}</h2>
+            <p className="eyebrow">AI Sandbox</p>
+            <strong>Benchmark Wizard</strong>
           </div>
-          <a href={`${api.apiBaseUrl.replace("/api/v1", "")}/docs`} target="_blank" rel="noreferrer">
-            API Docs
-          </a>
         </div>
 
-        {step === 1 ? (
+        <nav className="wizard-steps" aria-label="Wizard progress">
+          {WIZARD_STEPS.map((stepDef) => {
+            const isActive = wizard.step === stepDef.id;
+            const isCompleted = wizard.step > stepDef.id;
+            return (
+              <button
+                type="button"
+                key={stepDef.id}
+                className={`wizard-step ${isActive ? "is-active" : ""} ${isCompleted ? "is-completed" : ""}`}
+                onClick={() => wizard.goToStep(stepDef.id)}
+                disabled={stepDef.id > wizard.step + 1}
+              >
+                <span className="wizard-step__num">{stepDef.id}</span>
+                <span className="wizard-step__label">{stepDef.title}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="wizard-header__actions">
+          <button type="button" className="btn btn-ghost" onClick={toggleTheme}>
+            {theme === "light" ? "Dark" : "Light"}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => setView("landing")}>
+            Exit
+          </button>
+        </div>
+      </header>
+
+      <div className="wizard-body">
+        {wizard.step === 1 && (
           <Step1UploadPage
             datasets={datasets}
-            selectedDataset={draft.dataset}
+            selectedDataset={wizard.draft.dataset}
             loading={api.loading}
             error={api.error}
-            onUpload={handleDatasetUpload}
-            onSelectDataset={(dataset) => updateDraft({ dataset, datasetVersion: null, targetColumn: "", selectedFeatures: [] })}
-            onTaskTypeChange={(task) => updateDraft({ taskType: task as TaskType })}
-            taskType={draft.taskType as "classification" | "regression"}
+            autoTaskType={autoConfig?.task_type ?? null}
+            onUpload={handleUpload}
+            onSelectDataset={handleSelectDataset}
           />
-        ) : null}
+        )}
 
-        {step === 2 ? (
+        {wizard.step === 2 && (
           <Step2VersionPage
-            dataset={draft.dataset}
+            dataset={wizard.draft.dataset}
             versions={versions}
-            selectedVersion={draft.datasetVersion}
+            selectedVersion={wizard.draft.datasetVersion}
             columns={columns}
+            taskType={wizard.draft.taskType as "classification" | "regression"}
             loading={api.loading}
             error={api.error}
+            trainRatio={wizard.draft.trainRatio}
+            valRatio={wizard.draft.valRatio}
+            testRatio={wizard.draft.testRatio}
+            randomSeed={wizard.draft.randomSeed}
+            stratifyColumn={wizard.draft.stratifyColumn}
+            onAdvancedChange={handleAdvancedChange}
             onCreateVersion={handleCreateVersion}
-            onSelectVersion={(version) => updateDraft({ datasetVersion: version })}
+            onSelectVersion={handleSelectVersion}
           />
-        ) : null}
+        )}
 
-        {step === 3 ? (
+        {wizard.step === 3 && (
           <Step3ModelPage
             columns={columns}
-            targetColumn={draft.targetColumn}
-            selectedFeatures={draft.selectedFeatures}
+            taskType={wizard.draft.taskType as "classification" | "regression"}
+            autoConfigConfidence={autoConfig?.confidence ?? null}
+            autoConfigRationale={autoConfig?.rationale ?? null}
+            targetColumn={wizard.draft.targetColumn}
+            selectedFeatures={wizard.draft.selectedFeatures}
             models={models}
-            selectedModels={draft.selectedModels}
+            selectedModels={wizard.draft.selectedModels}
             loading={api.loading}
             error={api.error}
-            onTargetColumnChange={(value) =>
-              updateDraft({
-                targetColumn: value,
-                selectedFeatures: draft.selectedFeatures.filter((entry) => entry !== value),
-              })
-            }
+            onTargetColumnChange={(value) => wizard.updateDraft({ targetColumn: value })}
             onToggleFeature={handleToggleFeature}
             onToggleModel={handleToggleModel}
           />
-        ) : null}
+        )}
 
-        {step === 4 ? (
+        {wizard.step === 4 && (
           <Step4RunPage
-            selectedModelCount={draft.selectedModels.length}
-            selectedModels={draft.selectedModels}
+            selectedModelCount={wizard.draft.selectedModels.length}
+            selectedModels={wizard.draft.selectedModels}
             loading={api.loading}
             runningState={runState}
             experiment={experiment}
-            error={api.error}
-            defaultName={draft.experimentName || `${draft.dataset?.name ?? "Dataset"} Benchmark`}
-            defaultDescription={draft.experimentDescription}
-            randomSeed={draft.randomSeed}
-            onSubmit={async ({ name, description, randomSeed }) => {
-              updateDraft({
-                experimentName: name,
-                experimentDescription: description,
-                randomSeed,
-              });
-              await handleCreateAndRun({ name, description, randomSeed });
-            }}
+            error={runState === "failed" ? progressMessage : api.error}
+            defaultName={wizard.draft.experimentName}
+            defaultDescription={wizard.draft.experimentDescription}
+            randomSeed={wizard.draft.randomSeed}
+            progressMessage={progressMessage}
+            onRetry={handleRetry}
+            onSubmit={handleRunExperiment}
           />
-        ) : null}
+        )}
 
-        {step === 5 ? (
-          <Step5ReportPage summary={summary} report={report} results={results} loading={api.loading} error={api.error} />
-        ) : null}
+        {wizard.step === 5 && (
+          <Step5ReportPage
+            summary={summary}
+            report={report}
+            results={results}
+            loading={api.loading}
+            error={api.error}
+          />
+        )}
+      </div>
 
-        <ActionBar
-          canGoBack={canGoBack}
-          canGoForward={canGoForward}
-          onBack={navigateBack}
-          onNext={navigateNext}
-          disabled={api.loading || runState === "polling"}
-          nextLabel={step === 5 ? "Done" : "Continue"}
-        />
-      </main>
-    </div>
+      <footer className="wizard-footer glass-card">
+        <button
+          type="button"
+          className="btn btn-ghost"
+          disabled={!wizard.canGoBack}
+          onClick={wizard.previousStep}
+        >
+          Back
+        </button>
+
+        <div className="wizard-progress">
+          <div className="wizard-progress__bar" style={{ width: `${wizard.progress}%` }} />
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!wizard.canGoForward || (wizard.step === 4 && runState !== "completed")}
+          onClick={wizard.nextStep}
+        >
+          {wizard.step === WIZARD_STEPS.length ? "Finish" : "Continue"}
+        </button>
+      </footer>
+    </main>
   );
 };

@@ -75,4 +75,32 @@ describe("useApi", () => {
 
     fetchMock.mockRestore();
   });
+
+  it("fetches dataset autoconfig", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          dataset_id: "dataset-1",
+          suggested_name: "Risk dataset",
+          task_type: "classification",
+          target_column: "target",
+          feature_columns: ["a", "b"],
+          stratify_column: "target",
+          confidence: "high",
+          rationale: "Detected by target name",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const { result } = renderHook(() => useApi());
+
+    await act(async () => {
+      const data = await result.current.getDatasetAutoConfig("dataset-1");
+      expect(data.task_type).toBe("classification");
+      expect(data.target_column).toBe("target");
+    });
+
+    fetchMock.mockRestore();
+  });
 });

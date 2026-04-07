@@ -12,27 +12,27 @@ export const WIZARD_STEPS: WizardStep[] = [
   {
     id: 1,
     title: "Upload Data",
-    subtitle: "Bring your file and run quality checks.",
+    subtitle: "Add one dataset and let the app detect setup.",
   },
   {
     id: 2,
-    title: "Prepare Split",
-    subtitle: "Create train/validation/test sets automatically.",
+    title: "Create Split",
+    subtitle: "Use recommended split or open advanced settings.",
   },
   {
     id: 3,
-    title: "Choose Models",
-    subtitle: "Pick the engines we compare for you.",
+    title: "Review Models",
+    subtitle: "Models are auto-selected; deselect if needed.",
   },
   {
     id: 4,
-    title: "Run Sandbox",
-    subtitle: "Launch experiment and watch progress.",
+    title: "Run Benchmark",
+    subtitle: "Launch and track status in real time.",
   },
   {
     id: 5,
-    title: "Decision Report",
-    subtitle: "Read recommendation and model ranking.",
+    title: "Dashboard & Report",
+    subtitle: "Compare scores and download report files.",
   },
 ];
 

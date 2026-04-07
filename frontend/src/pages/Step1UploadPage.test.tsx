@@ -49,9 +49,8 @@ const datasetFixture: DatasetRead = {
 };
 
 describe("Step1UploadPage", () => {
-  it("switches task type when user chooses regression", async () => {
+  it("auto-fills dataset name from selected file", async () => {
     const user = userEvent.setup();
-    const onTaskTypeChange = vi.fn();
 
     render(
       <Step1UploadPage
@@ -59,16 +58,17 @@ describe("Step1UploadPage", () => {
         selectedDataset={null}
         loading={false}
         error={null}
+        autoTaskType={null}
         onUpload={vi.fn()}
         onSelectDataset={vi.fn()}
-        onTaskTypeChange={onTaskTypeChange}
-        taskType="classification"
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Regression" }));
+    const file = new File(["a,b\n1,2"], "credit-risk-q2.csv", { type: "text/csv" });
+    const fileInput = screen.getByLabelText("Data file") as HTMLInputElement;
+    await user.upload(fileInput, file);
 
-    expect(onTaskTypeChange).toHaveBeenCalledWith("regression");
+    expect(screen.getByLabelText("Dataset name")).toHaveValue("Credit risk q2");
   });
 
   it("shows selected dataset preview details", () => {
@@ -78,17 +78,17 @@ describe("Step1UploadPage", () => {
         selectedDataset={datasetFixture}
         loading={false}
         error={null}
+        autoTaskType="classification"
         onUpload={vi.fn()}
         onSelectDataset={vi.fn()}
-        onTaskTypeChange={vi.fn()}
-        taskType="classification"
       />
     );
 
-    expect(screen.getByText("Selected dataset preview")).toBeInTheDocument();
+    expect(screen.getByText("Auto-detected preview")).toBeInTheDocument();
     expect(screen.getByText(/Rows:/)).toBeInTheDocument();
     expect(screen.getByText(/Columns:/)).toBeInTheDocument();
     expect(screen.getByText(/Quality check:/)).toBeInTheDocument();
+    expect(screen.getByText(/Detected task type:/)).toBeInTheDocument();
   });
 
   it("submits upload form with selected file", async () => {
@@ -101,10 +101,9 @@ describe("Step1UploadPage", () => {
         selectedDataset={null}
         loading={false}
         error={null}
+        autoTaskType={null}
         onUpload={onUpload}
         onSelectDataset={vi.fn()}
-        onTaskTypeChange={vi.fn()}
-        taskType="classification"
       />
     );
 
@@ -118,7 +117,7 @@ describe("Step1UploadPage", () => {
     expect(fileInput.files).toHaveLength(1);
     expect(fileInput.files?.[0]?.name).toBe("risk.csv");
 
-    const submitButton = screen.getByRole("button", { name: "Upload and Validate" });
+    const submitButton = screen.getByRole("button", { name: "Upload and Auto-Configure" });
     expect(submitButton).toBeEnabled();
 
     const form = submitButton.closest("form");
