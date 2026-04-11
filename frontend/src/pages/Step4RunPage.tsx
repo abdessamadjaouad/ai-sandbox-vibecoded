@@ -36,9 +36,12 @@ export const Step4RunPage = ({
   const [description, setDescription] = useState(defaultDescription);
   const [seed, setSeed] = useState(randomSeed);
 
+  // Allow launching when idle, completed, or failed (to re-run)
+  const isProcessing = runningState === "creating" || runningState === "running" || runningState === "polling";
+  
   const canLaunch = useMemo(() => {
-    return name.trim().length > 0 && selectedModelCount > 0 && runningState !== "running" && runningState !== "polling";
-  }, [name, selectedModelCount, runningState]);
+    return name.trim().length > 0 && selectedModelCount > 0 && !isProcessing;
+  }, [name, selectedModelCount, isProcessing]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -46,6 +49,33 @@ export const Step4RunPage = ({
       return;
     }
     await onSubmit({ name: name.trim(), description: description.trim(), randomSeed: seed });
+  };
+
+  const getButtonText = () => {
+    if (isProcessing) {
+      return "Running...";
+    }
+    if (runningState === "completed") {
+      return "Run Again";
+    }
+    if (runningState === "failed") {
+      return "Retry Run";
+    }
+    return "Create and Run";
+  };
+
+  const getStatusClass = () => {
+    switch (runningState) {
+      case "completed":
+        return "is-completed";
+      case "failed":
+        return "is-failed";
+      case "running":
+      case "polling":
+        return "is-running";
+      default:
+        return "is-pending";
+    }
   };
 
   return (
@@ -81,8 +111,19 @@ export const Step4RunPage = ({
           </label>
 
           <button className="btn btn-primary" disabled={!canLaunch || loading}>
-            {runningState === "idle" ? "Create and Run" : "Re-run"}
+            {isProcessing && <span className="btn-spinner" />}
+            {getButtonText()}
           </button>
+
+          {runningState === "completed" && (
+            <p className="form-hint success">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              Experiment completed successfully. You can run again with different settings.
+            </p>
+          )}
         </form>
 
         <article className="glass-card dataset-card">
@@ -90,31 +131,52 @@ export const Step4RunPage = ({
 
           {loading ? <SpinnerPanel text={progressMessage || "Preparing run..."} /> : null}
 
-          {!loading && (runningState === "running" || runningState === "polling") ? (
+          {!loading && isProcessing ? (
             <SpinnerPanel text={progressMessage || "Experiment is running. Benchmarking models now..."} />
           ) : null}
 
           {experiment ? (
             <div className="run-details">
               <p>
-                <strong>Status:</strong> <span className={`status-tag is-${experiment.status}`}>{experiment.status}</span>
+                <strong>Status:</strong>{" "}
+                <span className={`status-tag ${getStatusClass()}`}>{experiment.status}</span>
               </p>
               <p>
-                <strong>Experiment ID:</strong> {experiment.id}
+                <strong>Experiment ID:</strong>{" "}
+                <code className="experiment-id">{experiment.id.slice(0, 8)}...</code>
               </p>
               <p>
                 <strong>Selected models:</strong> {selectedModelCount}
               </p>
+              {experiment.started_at && (
+                <p>
+                  <strong>Started:</strong>{" "}
+                  {new Date(experiment.started_at).toLocaleString()}
+                </p>
+              )}
+              {experiment.completed_at && (
+                <p>
+                  <strong>Completed:</strong>{" "}
+                  {new Date(experiment.completed_at).toLocaleString()}
+                </p>
+              )}
             </div>
           ) : (
-            <p className="muted">No run started yet.</p>
+            !isProcessing && <p className="muted">No run started yet.</p>
           )}
 
-          {runningState === "failed" ? (
-            <button type="button" className="btn btn-ghost" onClick={() => void onRetry()}>
-              Try again with same setup
-            </button>
-          ) : null}
+          {runningState === "failed" && (
+            <div className="run-error">
+              <p className="run-error__message">{error || progressMessage}</p>
+              <button type="button" className="btn btn-ghost" onClick={() => void onRetry()}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                Try again with same setup
+              </button>
+            </div>
+          )}
 
           <div className="chip-grid">
             {selectedModels.map((model) => (
@@ -126,7 +188,9 @@ export const Step4RunPage = ({
         </article>
       </div>
 
-      {error ? <p className="error-banner">Run failed: {error}. You can fix settings or retry.</p> : null}
+      {error && runningState !== "failed" ? (
+        <p className="error-banner">Run failed: {error}. You can fix settings or retry.</p>
+      ) : null}
     </section>
   );
 };

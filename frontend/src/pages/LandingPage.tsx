@@ -10,35 +10,20 @@ interface LandingPageProps {
 }
 
 export const LandingPage = ({
-  logoSrc,
+  logoSrc: _logoSrc,
   onStartWizard,
-  onToggleTheme,
-  theme,
-  apiDocsUrl,
+  onToggleTheme: _onToggleTheme,
+  theme: _theme,
+  apiDocsUrl: _apiDocsUrl,
   datasetsCount,
 }: LandingPageProps) => {
+  // Props prefixed with _ are passed for future use (navbar handles these now)
+  void _logoSrc;
+  void _onToggleTheme;
+  void _theme;
+  void _apiDocsUrl;
   return (
     <main className="landing-shell">
-      {/* Navigation */}
-      <header className="landing-nav glass-card">
-        <div className="brand-inline">
-          <img src={logoSrc} alt="DXC Technology" className="brand-inline__logo" />
-          <div>
-            <p className="eyebrow">DXC Technology</p>
-            <strong>AI Sandbox</strong>
-          </div>
-        </div>
-
-        <nav className="landing-nav__actions">
-          <button type="button" className="btn btn-ghost" onClick={onToggleTheme}>
-            {theme === "light" ? "Dark Mode" : "Light Mode"}
-          </button>
-          <a className="btn btn-ghost" href={apiDocsUrl} target="_blank" rel="noreferrer">
-            API Documentation
-          </a>
-        </nav>
-      </header>
-
       {/* Hero Section */}
       <section className="hero glass-card">
         <p className="eyebrow">Enterprise AI Benchmark Studio</p>

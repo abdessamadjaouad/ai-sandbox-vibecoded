@@ -1,4 +1,5 @@
 // /home/jao/Desktop/sandbox-project-vibecoded/frontend/src/pages/Step3ModelPage.tsx
+import { useMemo } from "react";
 import type { ModelCatalogueEntry } from "../types";
 import { SpinnerPanel } from "../components/SpinnerPanel";
 
@@ -33,6 +34,23 @@ export const Step3ModelPage = ({
   onToggleFeature,
   onToggleModel,
 }: Step3ModelPageProps) => {
+  const allSelected = useMemo(
+    () => models.length > 0 && selectedModels.length === models.length,
+    [models, selectedModels]
+  );
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      selectedModels.forEach((model) => onToggleModel(model));
+    } else {
+      models.forEach((model) => {
+        if (!selectedModels.some((m) => m.name === model.name)) {
+          onToggleModel(model);
+        }
+      });
+    }
+  };
+
   return (
     <section className="step-content">
       <header>
@@ -91,7 +109,17 @@ export const Step3ModelPage = ({
         </article>
 
         <article className="glass-card dataset-card">
-          <h3>Model catalogue</h3>
+          <div className="model-catalogue-header">
+            <h3>Model catalogue</h3>
+            <label className="select-all-checkbox">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={handleSelectAll}
+              />
+              <span>Select all ({selectedModels.length}/{models.length})</span>
+            </label>
+          </div>
 
           {loading ? <SpinnerPanel text="Loading model catalogue..." /> : null}
 

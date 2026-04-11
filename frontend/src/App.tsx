@@ -1,8 +1,14 @@
 // /home/jao/Desktop/sandbox-project-vibecoded/frontend/src/App.tsx
 import { useCallback, useEffect, useState } from "react";
 
+import { Navbar } from "./components/Navbar";
+import { Footer } from "./components/Footer";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { useApi } from "./hooks/useApi";
+import { AboutPage } from "./pages/AboutPage";
 import { LandingPage } from "./pages/LandingPage";
+import { LoginPage } from "./pages/LoginPage";
+import { SignupPage } from "./pages/SignupPage";
 import { Step1UploadPage } from "./pages/Step1UploadPage";
 import { Step2VersionPage } from "./pages/Step2VersionPage";
 import { Step3ModelPage } from "./pages/Step3ModelPage";
@@ -22,13 +28,13 @@ import type {
 
 import dxcLogo from "../dxc-logo.png";
 
-type AppView = "landing" | "wizard";
+type AppView = "landing" | "wizard" | "login" | "signup" | "about";
 type Theme = "light" | "dark";
 type RunningState = "idle" | "creating" | "running" | "polling" | "completed" | "failed";
 
-export const App = () => {
+const AppContent = () => {
   // Navigation and theming
-  const [view, setView] = useState<AppView>("landing");
+  const [view, setView] = useState<AppView>("signup");
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("ai-sandbox-theme");
@@ -38,6 +44,10 @@ export const App = () => {
     }
     return "light";
   });
+
+  // Auth (available for future use, e.g., protected routes)
+  const { isAuthenticated: _isAuthenticated } = useAuth();
+  void _isAuthenticated; // suppress unused warning
 
   // Wizard state
   const wizard = useWizardStore();
@@ -59,6 +69,11 @@ export const App = () => {
   const [runState, setRunState] = useState<RunningState>("idle");
   const [progressMessage, setProgressMessage] = useState("");
 
+  // URLs
+  const apiBaseUrl = api.apiBaseUrl.replace("/api/v1", "");
+  const apiDocsUrl = `${apiBaseUrl}/docs`;
+  const mlflowUrl = `${apiBaseUrl.replace(":8000", ":5000")}`;
+
   // Theme effect
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -68,6 +83,11 @@ export const App = () => {
   // Toggle theme handler
   const toggleTheme = useCallback(() => {
     setTheme((current) => (current === "light" ? "dark" : "light"));
+  }, []);
+
+  // Navigation handler
+  const handleNavigate = useCallback((newView: AppView) => {
+    setView(newView);
   }, []);
 
   // Start wizard
@@ -256,6 +276,11 @@ export const App = () => {
         return;
       }
 
+      // Reset state for new run
+      setExperiment(null);
+      setSummary(null);
+      setResults([]);
+      setReport(null);
       setRunState("creating");
       setProgressMessage("Creating experiment...");
 
@@ -404,163 +429,256 @@ export const App = () => {
   // Get columns from dataset
   const columns = wizard.draft.dataset?.schema_info?.columns ?? [];
 
+  // Render login page
+  if (view === "login") {
+    return (
+      <div className="app-shell">
+        <Navbar
+          logoSrc={dxcLogo}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigate={handleNavigate}
+          currentView={view}
+          apiDocsUrl={apiDocsUrl}
+          mlflowUrl={mlflowUrl}
+        />
+        <LoginPage
+          onNavigate={handleNavigate}
+          onSuccess={() => handleNavigate("landing")}
+        />
+        <Footer onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
+  // Render signup page
+  if (view === "signup") {
+    return (
+      <div className="app-shell">
+        <Navbar
+          logoSrc={dxcLogo}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigate={handleNavigate}
+          currentView={view}
+          apiDocsUrl={apiDocsUrl}
+          mlflowUrl={mlflowUrl}
+        />
+        <SignupPage
+          onNavigate={handleNavigate}
+          onSuccess={() => handleNavigate("landing")}
+        />
+        <Footer onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
+  // Render about page
+  if (view === "about") {
+    return (
+      <div className="app-shell">
+        <Navbar
+          logoSrc={dxcLogo}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigate={handleNavigate}
+          currentView={view}
+          apiDocsUrl={apiDocsUrl}
+          mlflowUrl={mlflowUrl}
+        />
+        <AboutPage logoSrc={dxcLogo} />
+        <Footer onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
   // Render landing page
   if (view === "landing") {
     return (
-      <LandingPage
-        logoSrc={dxcLogo}
-        onStartWizard={startWizard}
-        onToggleTheme={toggleTheme}
-        theme={theme}
-        apiDocsUrl={`${api.apiBaseUrl.replace("/api/v1", "")}/docs`}
-        datasetsCount={datasets.length}
-      />
+      <div className="app-shell">
+        <Navbar
+          logoSrc={dxcLogo}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigate={handleNavigate}
+          currentView={view}
+          apiDocsUrl={apiDocsUrl}
+          mlflowUrl={mlflowUrl}
+        />
+        <LandingPage
+          logoSrc={dxcLogo}
+          onStartWizard={startWizard}
+          onToggleTheme={toggleTheme}
+          theme={theme}
+          apiDocsUrl={apiDocsUrl}
+          datasetsCount={datasets.length}
+        />
+        <Footer onNavigate={handleNavigate} />
+      </div>
     );
   }
 
   // Render wizard
   return (
-    <main className="wizard-shell">
-      <header className="wizard-header glass-card">
-        <div className="brand-inline">
-          <img src={dxcLogo} alt="DXC logo" className="brand-inline__logo" />
-          <div>
-            <p className="eyebrow">AI Sandbox</p>
-            <strong>Benchmark Wizard</strong>
+    <div className="app-shell">
+      <Navbar
+        logoSrc={dxcLogo}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onNavigate={handleNavigate}
+        currentView={view}
+        apiDocsUrl={apiDocsUrl}
+        mlflowUrl={mlflowUrl}
+      />
+      <main className="wizard-shell">
+        <header className="wizard-header glass-card">
+          <div className="brand-inline" onClick={() => handleNavigate("landing")} role="button" tabIndex={0}>
+            <img src={dxcLogo} alt="DXC logo" className="brand-inline__logo" />
+            <div>
+              <p className="eyebrow">AI Sandbox</p>
+              <strong>Benchmark Wizard</strong>
+            </div>
           </div>
+
+          <nav className="wizard-steps" aria-label="Wizard progress">
+            {WIZARD_STEPS.map((stepDef) => {
+              const isActive = wizard.step === stepDef.id;
+              const isCompleted = wizard.step > stepDef.id;
+              return (
+                <button
+                  type="button"
+                  key={stepDef.id}
+                  className={`wizard-step ${isActive ? "is-active" : ""} ${isCompleted ? "is-completed" : ""}`}
+                  onClick={() => wizard.goToStep(stepDef.id)}
+                  disabled={stepDef.id > wizard.step + 1}
+                >
+                  <span className="wizard-step__num">{stepDef.id}</span>
+                  <span className="wizard-step__label">{stepDef.title}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="wizard-header__actions">
+            <button type="button" className="btn btn-ghost" onClick={() => handleNavigate("landing")}>
+              Exit
+            </button>
+          </div>
+        </header>
+
+        <div className="wizard-body">
+          {wizard.step === 1 && (
+            <Step1UploadPage
+              datasets={datasets}
+              selectedDataset={wizard.draft.dataset}
+              loading={api.loading}
+              error={api.error}
+              autoTaskType={autoConfig?.task_type ?? null}
+              onUpload={handleUpload}
+              onSelectDataset={handleSelectDataset}
+            />
+          )}
+
+          {wizard.step === 2 && (
+            <Step2VersionPage
+              dataset={wizard.draft.dataset}
+              versions={versions}
+              selectedVersion={wizard.draft.datasetVersion}
+              columns={columns}
+              taskType={wizard.draft.taskType as "classification" | "regression"}
+              loading={api.loading}
+              error={api.error}
+              trainRatio={wizard.draft.trainRatio}
+              valRatio={wizard.draft.valRatio}
+              testRatio={wizard.draft.testRatio}
+              randomSeed={wizard.draft.randomSeed}
+              stratifyColumn={wizard.draft.stratifyColumn}
+              onAdvancedChange={handleAdvancedChange}
+              onCreateVersion={handleCreateVersion}
+              onSelectVersion={handleSelectVersion}
+            />
+          )}
+
+          {wizard.step === 3 && (
+            <Step3ModelPage
+              columns={columns}
+              taskType={wizard.draft.taskType as "classification" | "regression"}
+              autoConfigConfidence={autoConfig?.confidence ?? null}
+              autoConfigRationale={autoConfig?.rationale ?? null}
+              targetColumn={wizard.draft.targetColumn}
+              selectedFeatures={wizard.draft.selectedFeatures}
+              models={models}
+              selectedModels={wizard.draft.selectedModels}
+              loading={api.loading}
+              error={api.error}
+              onTargetColumnChange={(value) => wizard.updateDraft({ targetColumn: value })}
+              onToggleFeature={handleToggleFeature}
+              onToggleModel={handleToggleModel}
+            />
+          )}
+
+          {wizard.step === 4 && (
+            <Step4RunPage
+              selectedModelCount={wizard.draft.selectedModels.length}
+              selectedModels={wizard.draft.selectedModels}
+              loading={api.loading}
+              runningState={runState}
+              experiment={experiment}
+              error={runState === "failed" ? progressMessage : api.error}
+              defaultName={wizard.draft.experimentName}
+              defaultDescription={wizard.draft.experimentDescription}
+              randomSeed={wizard.draft.randomSeed}
+              progressMessage={progressMessage}
+              onRetry={handleRetry}
+              onSubmit={handleRunExperiment}
+            />
+          )}
+
+          {wizard.step === 5 && (
+            <Step5ReportPage
+              summary={summary}
+              report={report}
+              results={results}
+              loading={api.loading}
+              error={api.error}
+              taskType={wizard.draft.taskType as "classification" | "regression"}
+            />
+          )}
         </div>
 
-        <nav className="wizard-steps" aria-label="Wizard progress">
-          {WIZARD_STEPS.map((stepDef) => {
-            const isActive = wizard.step === stepDef.id;
-            const isCompleted = wizard.step > stepDef.id;
-            return (
-              <button
-                type="button"
-                key={stepDef.id}
-                className={`wizard-step ${isActive ? "is-active" : ""} ${isCompleted ? "is-completed" : ""}`}
-                onClick={() => wizard.goToStep(stepDef.id)}
-                disabled={stepDef.id > wizard.step + 1}
-              >
-                <span className="wizard-step__num">{stepDef.id}</span>
-                <span className="wizard-step__label">{stepDef.title}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="wizard-header__actions">
-          <button type="button" className="btn btn-ghost" onClick={toggleTheme}>
-            {theme === "light" ? "Dark" : "Light"}
+        <footer className="wizard-footer glass-card">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={!wizard.canGoBack}
+            onClick={wizard.previousStep}
+          >
+            Back
           </button>
-          <button type="button" className="btn btn-ghost" onClick={() => setView("landing")}>
-            Exit
+
+          <div className="wizard-progress">
+            <div className="wizard-progress__bar" style={{ width: `${wizard.progress}%` }} />
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!wizard.canGoForward || (wizard.step === 4 && runState !== "completed")}
+            onClick={wizard.nextStep}
+          >
+            {wizard.step === WIZARD_STEPS.length ? "Finish" : "Continue"}
           </button>
-        </div>
-      </header>
+        </footer>
+      </main>
+      <Footer onNavigate={handleNavigate} />
+    </div>
+  );
+};
 
-      <div className="wizard-body">
-        {wizard.step === 1 && (
-          <Step1UploadPage
-            datasets={datasets}
-            selectedDataset={wizard.draft.dataset}
-            loading={api.loading}
-            error={api.error}
-            autoTaskType={autoConfig?.task_type ?? null}
-            onUpload={handleUpload}
-            onSelectDataset={handleSelectDataset}
-          />
-        )}
-
-        {wizard.step === 2 && (
-          <Step2VersionPage
-            dataset={wizard.draft.dataset}
-            versions={versions}
-            selectedVersion={wizard.draft.datasetVersion}
-            columns={columns}
-            taskType={wizard.draft.taskType as "classification" | "regression"}
-            loading={api.loading}
-            error={api.error}
-            trainRatio={wizard.draft.trainRatio}
-            valRatio={wizard.draft.valRatio}
-            testRatio={wizard.draft.testRatio}
-            randomSeed={wizard.draft.randomSeed}
-            stratifyColumn={wizard.draft.stratifyColumn}
-            onAdvancedChange={handleAdvancedChange}
-            onCreateVersion={handleCreateVersion}
-            onSelectVersion={handleSelectVersion}
-          />
-        )}
-
-        {wizard.step === 3 && (
-          <Step3ModelPage
-            columns={columns}
-            taskType={wizard.draft.taskType as "classification" | "regression"}
-            autoConfigConfidence={autoConfig?.confidence ?? null}
-            autoConfigRationale={autoConfig?.rationale ?? null}
-            targetColumn={wizard.draft.targetColumn}
-            selectedFeatures={wizard.draft.selectedFeatures}
-            models={models}
-            selectedModels={wizard.draft.selectedModels}
-            loading={api.loading}
-            error={api.error}
-            onTargetColumnChange={(value) => wizard.updateDraft({ targetColumn: value })}
-            onToggleFeature={handleToggleFeature}
-            onToggleModel={handleToggleModel}
-          />
-        )}
-
-        {wizard.step === 4 && (
-          <Step4RunPage
-            selectedModelCount={wizard.draft.selectedModels.length}
-            selectedModels={wizard.draft.selectedModels}
-            loading={api.loading}
-            runningState={runState}
-            experiment={experiment}
-            error={runState === "failed" ? progressMessage : api.error}
-            defaultName={wizard.draft.experimentName}
-            defaultDescription={wizard.draft.experimentDescription}
-            randomSeed={wizard.draft.randomSeed}
-            progressMessage={progressMessage}
-            onRetry={handleRetry}
-            onSubmit={handleRunExperiment}
-          />
-        )}
-
-        {wizard.step === 5 && (
-          <Step5ReportPage
-            summary={summary}
-            report={report}
-            results={results}
-            loading={api.loading}
-            error={api.error}
-          />
-        )}
-      </div>
-
-      <footer className="wizard-footer glass-card">
-        <button
-          type="button"
-          className="btn btn-ghost"
-          disabled={!wizard.canGoBack}
-          onClick={wizard.previousStep}
-        >
-          Back
-        </button>
-
-        <div className="wizard-progress">
-          <div className="wizard-progress__bar" style={{ width: `${wizard.progress}%` }} />
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!wizard.canGoForward || (wizard.step === 4 && runState !== "completed")}
-          onClick={wizard.nextStep}
-        >
-          {wizard.step === WIZARD_STEPS.length ? "Finish" : "Continue"}
-        </button>
-      </footer>
-    </main>
+export const App = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
