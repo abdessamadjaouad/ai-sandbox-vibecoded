@@ -112,7 +112,12 @@ class Experiment(Base, TimestampMixin):
     mlflow_experiment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mlflow_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     random_seed: Mapped[int] = mapped_column(Integer, nullable=False, default=42)
-    owner_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -212,6 +217,7 @@ class ExperimentRead(BaseModel):
     experiment_type: ExperimentType
     task_type: TaskType | None
     status: ExperimentStatus
+    owner_id: uuid.UUID | None
     dataset_id: uuid.UUID | None
     dataset_version_id: uuid.UUID | None
     target_column: str | None

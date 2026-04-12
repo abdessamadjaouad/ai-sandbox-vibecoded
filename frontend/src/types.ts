@@ -117,6 +117,7 @@ export interface ExperimentRead {
   experiment_type: "tabular_ml" | "nlp" | "llm" | "rag" | "agent";
   task_type: TaskType | null;
   status: ExperimentStatus;
+  user_id: string | null;
   dataset_id: string | null;
   dataset_version_id: string | null;
   target_column: string | null;

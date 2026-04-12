@@ -14,6 +14,7 @@ import { Step2VersionPage } from "./pages/Step2VersionPage";
 import { Step3ModelPage } from "./pages/Step3ModelPage";
 import { Step4RunPage } from "./pages/Step4RunPage";
 import { Step5ReportPage } from "./pages/Step5ReportPage";
+import { HistoryPage } from "./pages/HistoryPage";
 import { useWizardStore, WIZARD_STEPS } from "./store/wizardStore";
 import type {
   DatasetAutoConfigRead,
@@ -28,7 +29,7 @@ import type {
 
 import dxcLogo from "../dxc-logo.png";
 
-type AppView = "landing" | "wizard" | "login" | "signup" | "about";
+type AppView = "landing" | "wizard" | "login" | "signup" | "about" | "history";
 type Theme = "light" | "dark";
 type RunningState = "idle" | "creating" | "running" | "polling" | "completed" | "failed";
 
@@ -45,15 +46,14 @@ const AppContent = () => {
     return "light";
   });
 
-  // Auth (available for future use, e.g., protected routes)
-  const { isAuthenticated: _isAuthenticated } = useAuth();
-  void _isAuthenticated; // suppress unused warning
+  // Auth
+  const { isAuthenticated, token, getAuthHeaders } = useAuth();
 
   // Wizard state
   const wizard = useWizardStore();
 
-  // API hook
-  const api = useApi();
+  // API hook with auth
+  const api = useApi(getAuthHeaders);
 
   // Data state
   const [datasets, setDatasets] = useState<DatasetRead[]>([]);
@@ -90,8 +90,12 @@ const AppContent = () => {
     setView(newView);
   }, []);
 
-  // Start wizard
+  // Start wizard - requires authentication
   const startWizard = useCallback(() => {
+    if (!isAuthenticated || !token) {
+      setView("login");
+      return;
+    }
     setView("wizard");
     wizard.resetWizard();
     setAutoConfig(null);
@@ -101,7 +105,7 @@ const AppContent = () => {
     setReport(null);
     setRunState("idle");
     setProgressMessage("");
-  }, [wizard]);
+  }, [wizard, isAuthenticated, token]);
 
   // Load datasets on mount
   useEffect(() => {
@@ -512,6 +516,38 @@ const AppContent = () => {
           theme={theme}
           apiDocsUrl={apiDocsUrl}
           datasetsCount={datasets.length}
+        />
+        <Footer onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
+  // Render history page
+  if (view === "history") {
+    return (
+      <div className="app-shell">
+        <Navbar
+          logoSrc={dxcLogo}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigate={handleNavigate}
+          currentView={view}
+          apiDocsUrl={apiDocsUrl}
+          mlflowUrl={mlflowUrl}
+        />
+        <HistoryPage
+          onNavigate={handleNavigate}
+          onViewReport={(experimentId) => {
+            // Load the experiment and go to report step
+            api.getExperiment(experimentId).then((exp) => {
+              setExperiment(exp);
+              api.getExperimentSummary(exp.id).then(setSummary);
+              api.getExperimentResults(exp.id).then(setResults);
+              api.generateReport(exp.id).then(setReport).catch(() => {});
+              wizard.goToStep(5);
+              setView("wizard");
+            }).catch(() => {});
+          }}
         />
         <Footer onNavigate={handleNavigate} />
       </div>

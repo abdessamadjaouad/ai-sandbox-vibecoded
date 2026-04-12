@@ -23,11 +23,14 @@ interface AuthContextValue extends AuthState {
   logout: () => void;
   error: string | null;
   clearError: () => void;
+  getAuthHeaders: () => HeadersInit;
+  successMessage: string | null;
+  clearSuccess: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.DEV ? "http://localhost:8000/api/v1" : "/api/v1";
 
 const getStoredAuth = (): { token: string | null; user: User | null } => {
   if (typeof window === "undefined") {
@@ -57,6 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   });
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Verify token on mount
   useEffect(() => {
@@ -107,6 +111,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setState((prev) => ({ ...prev, loading: true }));
 
     try {
+      console.log("Login attempt for:", username);
+      
       // Login uses form-urlencoded
       const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -116,12 +122,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: new URLSearchParams({ username, password }),
       });
 
+      console.log("Login response status:", loginResponse.status);
+
       if (!loginResponse.ok) {
         const errorData = await loginResponse.json().catch(() => ({}));
+        console.log("Login error data:", errorData);
         throw new Error(errorData.detail || "Invalid credentials");
       }
 
       const { access_token } = await loginResponse.json();
+      console.log("Login successful, got token");
 
       // Fetch user details
       const meResponse = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -135,6 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const user = await meResponse.json();
+      console.log("Got user details:", user.username);
 
       // Store in localStorage
       localStorage.setItem("ai-sandbox-token", access_token);
@@ -147,6 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading: false,
       });
     } catch (err) {
+      console.error("Login error:", err);
       setState((prev) => ({ ...prev, loading: false }));
       setError(err instanceof Error ? err.message : "Login failed");
       throw err;
@@ -159,6 +171,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setState((prev) => ({ ...prev, loading: true }));
 
       try {
+        console.log("Registering user:", username);
+        
         const registerResponse = await fetch(`${API_BASE_URL}/auth/register`, {
           method: "POST",
           headers: {
@@ -172,6 +186,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }),
         });
 
+        console.log("Register response status:", registerResponse.status);
+
         if (!registerResponse.ok) {
           const errorData = await registerResponse.json().catch(() => ({}));
           const detail = errorData.detail;
@@ -183,9 +199,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           throw new Error("Registration failed");
         }
 
-        // Auto-login after registration
+        console.log("Registration successful, attempting login...");
+        
+        // Auto-login after registration - wait a moment for backend to process
+        await new Promise(resolve => setTimeout(resolve, 100));
         await login(username, password);
+        
+        console.log("Auto-login successful");
+        
+        // Set success message
+        setSuccessMessage("Account created successfully! Welcome to AI Sandbox.");
       } catch (err) {
+        console.error("Registration error:", err);
         setState((prev) => ({ ...prev, loading: false }));
         setError(err instanceof Error ? err.message : "Registration failed");
         throw err;
@@ -210,6 +235,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
   }, []);
 
+  const clearSuccess = useCallback(() => {
+    setSuccessMessage(null);
+  }, []);
+
+  const getAuthHeaders = useCallback((): HeadersInit => {
+    if (!state.token) {
+      return {};
+    }
+    return {
+      Authorization: `Bearer ${state.token}`,
+    };
+  }, [state.token]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -219,6 +257,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         error,
         clearError,
+        getAuthHeaders,
+        successMessage,
+        clearSuccess,
       }}
     >
       {children}

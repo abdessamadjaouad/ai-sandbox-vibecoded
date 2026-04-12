@@ -34,6 +34,7 @@ from backend.app.experiment_layer.orchestrator.graph import get_experiment_graph
 from backend.app.experiment_layer.orchestrator.catalogue import get_catalogue
 from backend.app.experiment_layer.tracking.mlflow_client import get_tracker
 from backend.app.data_layer.storage import get_storage_client
+from backend.app.governance.auth import get_current_active_user, RequiredUser
 
 import structlog
 
@@ -98,6 +99,7 @@ async def get_default_models(
 async def create_experiment(
     experiment_in: ExperimentCreate,
     session: AsyncSession = Depends(get_session),
+    current_user: RequiredUser = Depends(get_current_active_user),
 ) -> ExperimentRead:
     """
     Create a new experiment.
@@ -105,6 +107,7 @@ async def create_experiment(
     Args:
         experiment_in: Experiment creation data
         session: Database session
+        current_user: Authenticated user
 
     Returns:
         Created experiment
@@ -132,7 +135,7 @@ async def create_experiment(
         "models": [model.model_dump() if isinstance(model, ModelConfig) else model for model in experiment_in.models]
     }
 
-    # Create experiment record
+    # Create experiment record with owner
     experiment = Experiment(
         name=experiment_in.name,
         description=experiment_in.description,
@@ -145,6 +148,7 @@ async def create_experiment(
         models_config=models_config,
         constraints=experiment_in.constraints.model_dump() if experiment_in.constraints else None,
         random_seed=experiment_in.random_seed,
+        owner_id=current_user.id,
     )
 
     session.add(experiment)
@@ -163,9 +167,11 @@ async def list_experiments(
     status: ExperimentStatus | None = None,
     experiment_type: ExperimentType | None = None,
     session: AsyncSession = Depends(get_session),
+    current_user: RequiredUser = Depends(get_current_active_user),
 ) -> ExperimentListResponse:
     """
     List experiments with pagination and filtering.
+    Only returns experiments owned by the current user.
 
     Args:
         page: Page number
@@ -173,12 +179,13 @@ async def list_experiments(
         status: Filter by status
         experiment_type: Filter by type
         session: Database session
+        current_user: Authenticated user
 
     Returns:
         Paginated list of experiments
     """
-    query = select(Experiment)
-    count_query = select(func.count(Experiment.id))
+    query = select(Experiment).where(Experiment.owner_id == current_user.id)
+    count_query = select(func.count(Experiment.id)).where(Experiment.owner_id == current_user.id)
 
     if status:
         query = query.where(Experiment.status == status)

@@ -2213,6 +2213,34 @@ legend {
   }
 }
 
+/* Auth Success Message */
+.auth-success {
+  text-align: center;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+.auth-success svg {
+  color: var(--color-success);
+  margin-bottom: var(--space-lg);
+}
+
+.auth-success h2 {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-md);
+  color: var(--color-text-primary);
+}
+
+.auth-success p {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xl);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+}
+
+.auth-success .btn {
+  min-width: 200px;
+}
+
 /* ============================================================
    ABOUT PAGE
    ============================================================ */
@@ -2857,4 +2885,199 @@ legend {
 
 .w-full {
   width: 100%;
+}
+
+/* History Page */
+.history-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+.history-header {
+  margin-bottom: var(--space-lg);
+}
+
+.history-header h1 {
+  font-size: 2rem;
+  margin-bottom: var(--space-xs);
+}
+
+.history-header p {
+  color: var(--color-text-secondary);
+}
+
+.history-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-lg);
+}
+
+@media (max-width: 900px) {
+  .history-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+.experiments-list h2 {
+  margin-bottom: var(--space-md);
+  font-size: 1.25rem;
+}
+
+.experiment-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.experiment-item__button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.experiment-item__button:hover {
+  border-color: var(--color-coral);
+  background: var(--color-surface-hover);
+}
+
+.experiment-item.selected .experiment-item__button {
+  border-color: var(--color-coral);
+  background: var(--color-surface-hover);
+}
+
+.experiment-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.experiment-item__info strong {
+  color: var(--color-text-primary);
+}
+
+.experiment-item__meta {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.experiment-item__status {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.experiment-details h2 {
+  margin-bottom: var(--space-sm);
+  font-size: 1.5rem;
+}
+
+.experiment-details .description {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.details-header {
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.summary-item .label {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.summary-item .value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.results-table-container {
+  margin-bottom: var(--space-lg);
+}
+
+.results-table-container h3 {
+  margin-bottom: var(--space-md);
+  font-size: 1.125rem;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.results-table th,
+.results-table td {
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.results-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.results-table td {
+  font-size: 0.9375rem;
+}
+
+.recommendation-box {
+  background: linear-gradient(135deg, rgba(255, 120, 78, 0.1), rgba(255, 179, 114, 0.1));
+  border-left: 3px solid var(--color-coral);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.recommendation-box h3 {
+  margin-bottom: var(--space-sm);
+  font-size: 1rem;
+  color: var(--color-coral);
+}
+
+.recommendation-box p {
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+.details-actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.empty-state {
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--space-lg);
 }

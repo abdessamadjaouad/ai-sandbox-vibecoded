@@ -8,7 +8,7 @@ interface SignupPageProps {
 }
 
 export const SignupPage = ({ onNavigate, onSuccess }: SignupPageProps) => {
-  const { register, loading, error, clearError } = useAuth();
+  const { register, loading, error, clearError, successMessage, clearSuccess } = useAuth();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
@@ -21,6 +21,7 @@ export const SignupPage = ({ onNavigate, onSuccess }: SignupPageProps) => {
     e.preventDefault();
     setLocalError(null);
     clearError();
+    clearSuccess();
 
     if (!email.trim()) {
       setLocalError("Email is required");
@@ -64,6 +65,37 @@ export const SignupPage = ({ onNavigate, onSuccess }: SignupPageProps) => {
   };
 
   const displayError = localError || error;
+
+  // If success message, show it and don't show form
+  if (successMessage) {
+    return (
+      <main className="auth-shell">
+        <div className="auth-container">
+          <div className="auth-form-side">
+            <div className="auth-card">
+              <div className="auth-success">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                <h2>Welcome!</h2>
+                <p>{successMessage}</p>
+                <button type="button" className="btn btn-primary" onClick={onSuccess}>
+                  Continue to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="auth-decoration">
+            <div className="auth-decoration__content">
+              <h2>AI Sandbox</h2>
+              <p>Enterprise-grade AI benchmarking platform for comparing ML, NLP, LLM, RAG, and agentic systems.</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="auth-shell">

@@ -14,7 +14,7 @@ import type {
   TaskType,
 } from "../types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.DEV ? "http://localhost:8000/api/v1" : "/api/v1";
 
 class ApiError extends Error {
   status: number;
@@ -25,8 +25,14 @@ class ApiError extends Error {
   }
 }
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+type AuthHeadersGetter = () => HeadersInit;
+
+async function requestJson<T>(url: string, init?: RequestInit, authHeaders?: HeadersInit): Promise<T> {
+  const headers: HeadersInit = {
+    ...authHeaders,
+    ...init?.headers,
+  };
+  const response = await fetch(url, { ...init, headers });
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
@@ -44,9 +50,11 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export const useApi = () => {
+export const useApi = (getAuthHeaders?: AuthHeadersGetter) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const authHeaders = getAuthHeaders ? getAuthHeaders() : {};
 
   const withLoading = useCallback(async <T>(fn: () => Promise<T>): Promise<T> => {
     setLoading(true);
@@ -61,6 +69,18 @@ export const useApi = () => {
       setLoading(false);
     }
   }, []);
+
+  const listExperiments = useCallback(
+    async (page: number = 1, pageSize: number = 20): Promise<{ items: ExperimentRead[]; total: number; page: number; page_size: number }> =>
+      withLoading(async () =>
+        requestJson<{ items: ExperimentRead[]; total: number; page: number; page_size: number }>(
+          `${API_BASE_URL}/experiments?page=${page}&page_size=${pageSize}`,
+          {},
+          authHeaders
+        )
+      ),
+    [withLoading, authHeaders]
+  );
 
   const uploadDataset = useCallback(
     async (file: File, name: string, description: string): Promise<DatasetRead> =>
@@ -77,6 +97,7 @@ export const useApi = () => {
         const response = await fetch(`${API_BASE_URL}/datasets`, {
           method: "POST",
           body: formData,
+          headers: authHeaders,
         });
 
         if (!response.ok) {
@@ -86,28 +107,28 @@ export const useApi = () => {
 
         return (await response.json()) as DatasetRead;
       }),
-    [withLoading]
+    [withLoading, authHeaders]
   );
 
   const getDatasetAutoConfig = useCallback(
     async (datasetId: string): Promise<DatasetAutoConfigRead> =>
-      withLoading(async () => requestJson<DatasetAutoConfigRead>(`${API_BASE_URL}/datasets/${datasetId}/autoconfig`)),
-    [withLoading]
+      withLoading(async () => requestJson<DatasetAutoConfigRead>(`${API_BASE_URL}/datasets/${datasetId}/autoconfig`, {}, authHeaders)),
+    [withLoading, authHeaders]
   );
 
   const listDatasets = useCallback(
     async (): Promise<DatasetRead[]> =>
       withLoading(async () => {
-        const data = await requestJson<DatasetListResponse>(`${API_BASE_URL}/datasets?page=1&page_size=100`);
+        const data = await requestJson<DatasetListResponse>(`${API_BASE_URL}/datasets?page=1&page_size=100`, {}, authHeaders);
         return data.items;
       }),
-    [withLoading]
+    [withLoading, authHeaders]
   );
 
   const listDatasetVersions = useCallback(
     async (datasetId: string): Promise<DatasetVersionRead[]> =>
-      withLoading(async () => requestJson<DatasetVersionRead[]>(`${API_BASE_URL}/datasets/${datasetId}/versions`)),
-    [withLoading]
+      withLoading(async () => requestJson<DatasetVersionRead[]>(`${API_BASE_URL}/datasets/${datasetId}/versions`, {}, authHeaders)),
+    [withLoading, authHeaders]
   );
 
   const createDatasetVersion = useCallback(
@@ -122,73 +143,83 @@ export const useApi = () => {
       }
     ): Promise<DatasetVersionRead> =>
       withLoading(async () =>
-        requestJson<DatasetVersionRead>(`${API_BASE_URL}/datasets/${datasetId}/versions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
+        requestJson<DatasetVersionRead>(
+          `${API_BASE_URL}/datasets/${datasetId}/versions`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify(payload),
+          },
+          authHeaders
+        )
       ),
-    [withLoading]
+    [withLoading, authHeaders]
   );
 
   const listModels = useCallback(
     async (taskType: TaskType): Promise<ModelCatalogueEntry[]> =>
       withLoading(async () =>
-        requestJson<ModelCatalogueEntry[]>(`${API_BASE_URL}/experiments/catalogue/models?task_type=${taskType}`)
+        requestJson<ModelCatalogueEntry[]>(`${API_BASE_URL}/experiments/catalogue/models?task_type=${taskType}`, {}, authHeaders)
       ),
-    [withLoading]
+    [withLoading, authHeaders]
   );
 
   const createExperiment = useCallback(
     async (payload: ExperimentCreatePayload): Promise<ExperimentRead> =>
       withLoading(async () =>
-        requestJson<ExperimentRead>(`${API_BASE_URL}/experiments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
+        requestJson<ExperimentRead>(
+          `${API_BASE_URL}/experiments`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify(payload),
+          },
+          authHeaders
+        )
       ),
-    [withLoading]
+    [withLoading, authHeaders]
   );
 
   const runExperiment = useCallback(
     async (experimentId: string): Promise<ExperimentRead> =>
       withLoading(async () =>
-        requestJson<ExperimentRead>(`${API_BASE_URL}/experiments/${experimentId}/run`, {
-          method: "POST",
-        })
+        requestJson<ExperimentRead>(`${API_BASE_URL}/experiments/${experimentId}/run`, { method: "POST" }, authHeaders)
       ),
-    [withLoading]
+    [withLoading, authHeaders]
   );
 
   const getExperiment = useCallback(
     async (experimentId: string): Promise<ExperimentRead> =>
-      withLoading(async () => requestJson<ExperimentRead>(`${API_BASE_URL}/experiments/${experimentId}`)),
-    [withLoading]
+      withLoading(async () => requestJson<ExperimentRead>(`${API_BASE_URL}/experiments/${experimentId}`, {}, authHeaders)),
+    [withLoading, authHeaders]
   );
 
   const getExperimentSummary = useCallback(
     async (experimentId: string): Promise<ExperimentSummary> =>
-      withLoading(async () => requestJson<ExperimentSummary>(`${API_BASE_URL}/experiments/${experimentId}/summary`)),
-    [withLoading]
+      withLoading(async () => requestJson<ExperimentSummary>(`${API_BASE_URL}/experiments/${experimentId}/summary`, {}, authHeaders)),
+    [withLoading, authHeaders]
   );
 
   const getExperimentResults = useCallback(
     async (experimentId: string): Promise<ExperimentResultRead[]> =>
-      withLoading(async () => requestJson<ExperimentResultRead[]>(`${API_BASE_URL}/experiments/${experimentId}/results`)),
-    [withLoading]
+      withLoading(async () => requestJson<ExperimentResultRead[]>(`${API_BASE_URL}/experiments/${experimentId}/results`, {}, authHeaders)),
+    [withLoading, authHeaders]
   );
 
   const generateReport = useCallback(
     async (experimentId: string): Promise<EvaluationReportResponse> =>
       withLoading(async () =>
-        requestJson<EvaluationReportResponse>(`${API_BASE_URL}/evaluation/report/generate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ experiment_id: experimentId }),
-        })
+        requestJson<EvaluationReportResponse>(
+          `${API_BASE_URL}/evaluation/report/generate`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify({ experiment_id: experimentId }),
+          },
+          authHeaders
+        )
       ),
-    [withLoading]
+    [withLoading, authHeaders]
   );
 
   return useMemo(
@@ -209,6 +240,7 @@ export const useApi = () => {
       getExperimentSummary,
       getExperimentResults,
       generateReport,
+      listExperiments,
     }),
     [
       loading,
@@ -225,6 +257,7 @@ export const useApi = () => {
       getExperimentSummary,
       getExperimentResults,
       generateReport,
+      listExperiments,
     ]
   );
 };
