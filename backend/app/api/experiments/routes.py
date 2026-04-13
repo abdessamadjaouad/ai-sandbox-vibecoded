@@ -638,7 +638,7 @@ async def delete_experiment(
             detail="Cannot delete a running experiment",
         )
 
-    await session.delete(experiment)
+await session.delete(experiment)
     await session.commit()
 
     logger.info("experiment_deleted", experiment_id=str(experiment_id))

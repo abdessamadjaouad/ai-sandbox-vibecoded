@@ -23,6 +23,9 @@ export const Navbar = ({
 }: NavbarProps) => {
   const { isAuthenticated, user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Check if user is admin (superuser)
+  const isAdmin = user?.is_superuser === true;
 
   const handleLogout = () => {
     logout();
@@ -33,8 +36,10 @@ export const Navbar = ({
     { label: "Home", view: "landing" as const },
     { label: "About Us", view: "about" as const },
     ...(isAuthenticated ? [{ label: "My Experiments", view: "history" as const }] : []),
-    { label: "API Docs", href: apiDocsUrl, external: true },
-    { label: "MLflow", href: mlflowUrl, external: true },
+    ...(isAdmin ? [
+      { label: "API Docs", href: apiDocsUrl, external: true },
+      { label: "MLflow", href: mlflowUrl, external: true },
+    ] : []),
   ];
 
   return (
