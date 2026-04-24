@@ -15,5 +15,6 @@
       "__pycache__/**",
       "node_modules/**"
     ]
-  }
+  },
+  "plugin" : ["@mohak34/opencode-notifier@latest"]
 }

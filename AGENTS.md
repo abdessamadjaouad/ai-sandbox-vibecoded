@@ -55,11 +55,11 @@ Deployment targets:
 Component           | Technology
 --------------------|--------------------------------------------
 Orchestrator        | LangGraph (Layer 2 — experiment graph)
-API backend         | FastAPI
+API backend         | FastAPI (backend/app/main.py)
+Frontend            | React 18 + Vite + TypeScript (frontend/src/)
 Experiment tracking | MLflow + LangFuse
-Frontend / UI       | Streamlit
 Containerisation    | Docker Compose (MVP) → Kubernetes (prod)
-Relational DB       | PostgreSQL
+Relational DB       | PostgreSQL (async via asyncpg + SQLAlchemy)
 Object storage      | MinIO (S3-compatible)
 Vector DB           | ChromaDB (MVP) / Weaviate (prod)
 LLM inference       | vLLM (local LLMs) + Ollama + OpenAI-compatible API
@@ -206,79 +206,131 @@ For agent evaluation (Mode B — live API):
 </orchestrator_design>
 
 
-<instructions>
-When generating code, always follow these rules:
+<developer_commands>
+## Backend (Python)
 
-1. STRUCTURE FIRST
-   Before writing code, think step by step:
-   - Which layer does this component belong to?
-   - What are the inputs and outputs (types)?
-   - What governance constraints apply (auth, logging, isolation)?
-   - Is this reproducible (seeded, versioned)?
+Install dependencies (uses uv.lock + pyproject.toml):
+  uv pip install -e ".[dev]"
 
-2. MODULE ORGANISATION
-   Follow this directory structure strictly:
+Run backend locally:
+  uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
-   ai_sandbox/
-   ├── api/                  FastAPI routers + Pydantic schemas
-   ├── data_layer/           ingestion, validation, versioning, embeddings
-   ├── experiment_layer/
-   │   ├── orchestrator/     LangGraph state + graph definition
-   │   ├── runners/          ML, NLP, LLM, RAG, agent runners
-   │   └── tracking/         MLflow + LangFuse client wrappers
-   ├── evaluation_layer/
-   │   ├── metrics/          classification, regression, llm, agent
-   │   ├── scoring/          weighted scorer, constraint checker
-   │   └── reports/          Markdown + PDF generators
-   ├── governance/           RBAC, audit log, secrets, compliance
-   ├── models/               Pydantic schemas shared across layers
-   ├── frontend/             Streamlit pages (wizard-based UX)
-   └── docker/               Compose + Dockerfiles
+Run backend tests:
+  pytest
+  pytest --cov=backend --cov-report=html
+  pytest tests/unit/
+  pytest tests/integration/
 
-3. TYPE SAFETY
-   Use Pydantic v2 models for all API I/O and inter-layer data.
-   Use TypedDict for LangGraph state.
-   Never pass raw dicts across layer boundaries.
+Lint / format / typecheck (ruff + mypy configured in pyproject.toml):
+  ruff check backend/
+  ruff format backend/
+  mypy backend/
 
-4. REPRODUCIBILITY
-   Every experiment run must be seeded (random_state parameter).
-   Every run must record: dataset_id + version + config hash.
-   Artefacts must be stored in MinIO with path:
-     s3://sandbox/{run_id}/{artefact_name}
+## Frontend (React + Vite)
 
-5. GOVERNANCE BY DEFAULT
-   Every sensitive operation must:
-   - Check RBAC permissions before executing
-   - Write an audit log entry after executing
-   - Never log raw sensitive data (mask PII fields)
+Location: frontend/
+Package manager: npm
 
-6. ERROR HANDLING
-   Use structured custom exception classes per layer.
-   Always return structured error responses from FastAPI (never 500).
-   On partial evaluation failure, continue with available KPIs,
-   flag missing ones — never abort the full run silently.
+Install dependencies:
+  cd frontend && npm install
 
-7. TESTABILITY
-   Every module must have a corresponding test file under tests/.
-   Use pytest + pytest-asyncio for async FastAPI routes.
-   Mock external services (MLflow, MinIO, vLLM, LangFuse) in tests.
+Run dev server (port 5173, host 0.0.0.0):
+  cd frontend && npm run dev
 
-8. DOCUMENTATION
-   Every public function needs a docstring with:
-   - one-sentence purpose
-   - Args (typed)
-   - Returns (typed)
-   - Raises (if applicable)
+Build for production:
+  cd frontend && npm run build
 
-9. FRONTEND UX RULES
-   Target users are non-technical employees.
-   - Use wizard steps (one decision per screen)
-   - Use plain language (no ML jargon in labels or messages)
-   - Show progress indicators during long runs
-   - Surface results as visual comparisons, not raw numbers
-   - Provide a one-sentence plain-language recommendation at the top
-     of every evaluation report
-</instructions>
+Run frontend tests (vitest + jsdom + Testing Library):
+  cd frontend && npm run test
+  cd frontend && npm run test:watch
+
+## Infrastructure (Docker Compose)
+
+Start only data services (required for local backend dev):
+  docker compose up -d postgres chromadb mlflow minio
+
+Start full stack:
+  docker compose up --build
+
+Note: db-init service creates APP_DB and MLFLOW_DB before backend starts.
+Backend healthcheck depends on all data services being healthy.
+
+Service ports:
+  Backend   :8000
+  Frontend  :5173 (dev) / :80 (Docker nginx)
+  MLflow    :5000
+  ChromaDB  :8001
+  MinIO     :9000 (API) / 9001 (console)
+  Postgres  :5432
+</developer_commands>
+
+
+<repo_structure>
+Actual directory layout (verified from codebase):
+
+backend/app/
+  main.py                 FastAPI entrypoint
+  core/                   Config, database, logging, security
+  api/                    FastAPI routers (auth, datasets, evaluation, experiments)
+  data_layer/             Ingestion, validation, versioning, embeddings, storage
+  experiment_layer/       Orchestrator (graph, state, catalogue), runners, tracking
+  evaluation_layer/       Metrics, scoring, reports
+  governance/             RBAC, audit, auth, secrets, models
+  models/                 Pydantic schemas (dataset, experiment, base)
+  agents/                 Planner, executor, memory, orchestrator
+
+frontend/
+  src/
+    App.tsx               Root component with routing logic
+    main.tsx              React entrypoint
+    styles.css            Complete design system (3400+ lines)
+    types.ts              Shared TypeScript types
+    store/wizardStore.ts  Wizard state management
+    context/AuthContext.tsx  Authentication context
+    hooks/                useApi, useWizardExperience
+    components/           Navbar, Footer, SpinnerPanel, ProgressRail, ActionBar
+    pages/                Landing, Login, Signup, About, History
+                          Step1Upload, Step2Version, Step3Model, Step4Run, Step5Report
+  vite.config.ts          Vite + vitest config
+  package.json            React 18, html2canvas, jspdf, react-markdown
+
+docker/
+  Dockerfile.backend
+  Dockerfile.frontend
+
+docker-compose.yml        7 services with healthchecks and dependency order
+
+.pyproject.toml           Hatchling build, ruff, mypy, pytest config
+uv.lock                   Python lockfile
+
+.opencode/skills/         Benchmark-engine, frontend-design, mlops-backend, pdf, xlsx
+</repo_structure>
+
+
+<testing_quirks>
+- Backend: pytest with pytest-asyncio (auto mode). Mock external services
+  (MLflow, MinIO, vLLM, LangFuse) in unit tests.
+- Frontend: vitest with jsdom environment. Setup file at frontend/src/test/setup.ts.
+  CSS is enabled in test environment (css: true in vite.config.ts).
+- Integration tests may require running postgres + chromadb services.
+- Pre-commit hooks are configured (check .pre-commit-config.yaml if present).
+</testing_quirks>
+
+
+<frontend_ux_rules>
+Target users are non-technical employees.
+- Use wizard steps (one decision per screen)
+- Use plain language (no ML jargon in labels or messages)
+- Show progress indicators during long runs
+- Surface results as visual comparisons, not raw numbers
+- Provide a one-sentence plain-language recommendation at the top
+  of every evaluation report
+- Support light/dark themes (data-theme attribute on html element)
+- All buttons are rounded-full (pill shape)
+- Use glass-card class for elevated surfaces
+- Primary CTAs use dark gradient (light mode) or white gradient (dark mode)
+- Brand gradient (amber→coral→blue) used for accents and active states
+</frontend_ux_rules>
 
 
 <negative_constraints>
@@ -294,7 +346,7 @@ When generating code, always follow these rules:
   (ground truth, config, dataset version)
 - DO NOT assume the LLM is remote — always check the model registry
   first for a local vLLM / Ollama endpoint
-- DO NOT expose technical error stack traces to the Streamlit frontend —
+- DO NOT expose technical error stack traces to the frontend —
   translate them to user-friendly messages
 - DO NOT suggest Airflow, Pinecone, W&B, or SageMaker — the stack
   is fixed (see tech_stack section)
@@ -323,10 +375,11 @@ When generating the LangGraph orchestrator:
   - Define the TypedDict state schema before the graph nodes
   - Comment each edge with the condition or trigger
 
-When generating Streamlit pages:
-  - Start with the user goal (what decision does this page serve?)
-  - Use st.steps or a sidebar progress indicator for multi-step flows
-  - Always add st.spinner() around any operation > 1 second
+When generating React components:
+  - Use functional components with hooks
+  - Follow the existing design system (styles.css tokens)
+  - Support both light and dark themes via CSS variables
+  - Add aria labels and role attributes for accessibility
 </output_format>
 
 ## Session Memory Rule
