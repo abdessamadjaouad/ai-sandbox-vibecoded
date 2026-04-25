@@ -6,7 +6,7 @@ interface NavbarProps {
   logoSrc: string;
   theme: "light" | "dark";
   onToggleTheme: () => void;
-  onNavigate: (view: "landing" | "wizard" | "login" | "signup" | "about" | "history") => void;
+  onNavigate: (view: "landing" | "wizard" | "login" | "signup" | "about" | "history" | "agent-evaluation" | "agent-tester") => void;
   currentView: string;
   apiDocsUrl: string;
   mlflowUrl: string;
@@ -35,7 +35,11 @@ export const Navbar = ({
   const navLinks = [
     { label: "Home", view: "landing" as const },
     { label: "About Us", view: "about" as const },
-    ...(isAuthenticated ? [{ label: "My Experiments", view: "history" as const }] : []),
+    ...(isAuthenticated ? [
+      { label: "My Experiments", view: "history" as const },
+      { label: "Agent Eval", view: "agent-evaluation" as const },
+      { label: "Agent Tester (Demo)", view: "agent-tester" as const },
+    ] : []),
     ...(isAdmin ? [
       { label: "API Docs", href: apiDocsUrl, external: true },
       { label: "MLflow", href: mlflowUrl, external: true },

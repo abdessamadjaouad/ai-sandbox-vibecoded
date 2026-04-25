@@ -34,11 +34,27 @@ from backend.app.evaluation_layer.scoring import (
 )
 from backend.app.evaluation_layer.reports import ReportGenerator, ReportConfig
 
+from backend.app.models.agent_api_contract import (
+    AgentBatchEvaluationRequest,
+    AgentBatchEvaluationResponse,
+    AgentEvaluationJudgment,
+    AgentKPIReport,
+    AgentRunRequestV1,
+    AgentRunResponseV1,
+    JudgmentLevel,
+)
+from backend.app.evaluation_layer.agents.kpi_calculator import AgentKPICalculator
+from backend.app.evaluation_layer.agents.scoring import AgentScoringEngine
+from backend.app.evaluation_layer.agents.report_generator import AgentReportGenerator
+
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/evaluation", tags=["evaluation"])
+
+# In-memory store for agent evaluations (replace with DB in production)
+_agent_evaluation_store: dict[str, dict] = {}
 
 
 # =============================================================================
@@ -470,4 +486,239 @@ async def get_experiment_scores(
         "best_model": best["model_name"] if best else None,
         "best_score": best["global_score"] if best else None,
         "models": models,
+    }
+
+
+# =============================================================================
+# Agent Evaluation Endpoints
+# =============================================================================
+
+
+@router.post("/agent/submit", response_model=AgentBatchEvaluationResponse)
+async def evaluate_agent_single(
+    response: AgentRunResponseV1,
+    scoring_weights: dict[str, float] | None = None,
+    constraints: dict[str, Any] | None = None,
+) -> AgentBatchEvaluationResponse:
+    """
+    Evaluate a single agent response.
+
+    Computes KPIs, scoring, and judgment from a single agent run.
+    Useful for quick validation and integration testing.
+
+    Args:
+        response: AgentRunResponseV1 from the external agent
+        scoring_weights: Optional custom category weights
+        constraints: Optional constraint thresholds
+
+    Returns:
+        Full evaluation with KPI report, judgment, and Markdown/JSON reports
+    """
+    return await _evaluate_batch([response], scoring_weights, constraints)
+
+
+@router.post("/agent/batch", response_model=AgentBatchEvaluationResponse)
+async def evaluate_agent_batch(
+    request: AgentBatchEvaluationRequest,
+) -> AgentBatchEvaluationResponse:
+    """
+    Evaluate a batch of agent responses.
+
+    Computes aggregated KPIs across multiple runs, applies scoring
+    and judgment aligned with ISO/IEC 25010 and IEEE 1012.
+
+    Args:
+        request: Batch evaluation request with responses and optional config
+
+    Returns:
+        Full evaluation with KPI report, judgment, and Markdown/JSON reports
+    """
+    return await _evaluate_batch(
+        request.responses,
+        request.scoring_weights,
+        request.constraints,
+    )
+
+
+async def _evaluate_batch(
+    responses: list[AgentRunResponseV1],
+    scoring_weights: dict[str, float] | None = None,
+    constraints: dict[str, Any] | None = None,
+) -> AgentBatchEvaluationResponse:
+    """Shared evaluation logic for single and batch submissions."""
+    try:
+        # Compute KPIs
+        calculator = AgentKPICalculator()
+        kpi_report = calculator.evaluate_batch(responses)
+
+        # Compute scoring & judgment
+        engine = AgentScoringEngine(weights=scoring_weights, constraints=constraints)
+        judgment = engine.score(kpi_report)
+
+        # Generate reports
+        generator = AgentReportGenerator()
+        reports = generator.generate(kpi_report, judgment)
+
+        # Store evaluation
+        eval_id = kpi_report.evaluation_id
+        _agent_evaluation_store[eval_id] = {
+            "kpi_report": kpi_report.model_dump(mode="json"),
+            "judgment": judgment.model_dump(mode="json"),
+            "markdown": reports["markdown"],
+            "json": reports["json"],
+        }
+
+        logger.info(
+            "agent_evaluation_completed",
+            evaluation_id=eval_id,
+            run_count=len(responses),
+            global_score=judgment.global_score,
+            judgment=judgment.judgment.value,
+        )
+
+        return AgentBatchEvaluationResponse(
+            evaluation_id=eval_id,
+            kpi_report=kpi_report,
+            judgment=judgment,
+            raw_responses_count=len(responses),
+            markdown_report=reports["markdown"],
+            json_report=reports["json"],
+        )
+
+    except Exception as e:
+        logger.error("agent_evaluation_failed", error=str(e))
+        raise HTTPException(status_code=400, detail=f"Evaluation failed: {str(e)}")
+
+
+@router.get("/agent/{eval_id}/report")
+async def get_agent_evaluation_report(
+    eval_id: str,
+    format: str = Query("json", description="Report format: json | markdown"),
+) -> dict[str, Any] | PlainTextResponse:
+    """
+    Retrieve a previously generated agent evaluation report.
+
+    Args:
+        eval_id: Evaluation identifier
+        format: "json" or "markdown"
+
+    Returns:
+        Evaluation report in requested format
+    """
+    if eval_id not in _agent_evaluation_store:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+
+    stored = _agent_evaluation_store[eval_id]
+
+    if format == "markdown":
+        return PlainTextResponse(stored["markdown"])
+
+    return {
+        "evaluation_id": eval_id,
+        "kpi_report": stored["kpi_report"],
+        "judgment": stored["judgment"],
+        "json_report": stored["json"],
+    }
+
+
+@router.get("/agent/contract")
+async def get_agent_api_contract() -> dict[str, Any]:
+    """
+    Retrieve the unified Agent API Contract schema.
+
+    This endpoint returns the standardized request/response schemas
+    that ALL external agent projects must implement to integrate
+    with the AI Sandbox evaluation layer.
+
+    Returns:
+        OpenAPI-compatible schema definitions for the agent contract
+    """
+    return {
+        "version": "1.0.0",
+        "description": "Unified Agent API Contract for AI Sandbox integration",
+        "endpoint": "POST /v1/run-agent",
+        "standards": ["ISO/IEC 25010:2023", "IEEE 1012-2016", "MLCommons AI Efficiency"],
+        "request_schema": AgentRunRequestV1.model_json_schema(),
+        "response_schema": AgentRunResponseV1.model_json_schema(),
+        "kpi_report_schema": AgentKPIReport.model_json_schema(),
+        "judgment_schema": AgentEvaluationJudgment.model_json_schema(),
+        "mandatory_fields": {
+            "request": ["run_id", "agent_id", "input"],
+            "response": ["run_id", "agent_id", "status", "output", "latency_ms", "started_at", "completed_at"],
+        },
+        "error_taxonomy": [e.value for e in JudgmentLevel],
+        "example_request": {
+            "run_id": "run_abc123",
+            "agent_id": "market_agent",
+            "agent_version": "1.0.0",
+            "input": "Analyze market trends for Q2 2026",
+            "expected_output": "Market trends report...",
+            "context": {
+                "workflow_id": "wf_123",
+                "step_id": "step_1",
+            },
+            "config": {
+                "temperature": 0.7,
+                "max_tokens": 1000,
+                "timeout_ms": 30000,
+            },
+            "allowed_tools": ["search", "calculator"],
+            "metadata": {
+                "user_id": "user_1",
+                "source": "sandbox",
+            },
+        },
+        "example_response": {
+            "run_id": "run_abc123",
+            "agent_id": "market_agent",
+            "agent_version": "1.0.0",
+            "status": "SUCCESS",
+            "output": {"summary": "Market shows 12% growth..."},
+            "latency_ms": 1450,
+            "started_at": "2026-04-24T10:00:00Z",
+            "completed_at": "2026-04-24T10:00:01.450Z",
+            "metrics": {
+                "technical": {
+                    "cpu_time_ms": 420,
+                    "memory_mb": 256,
+                    "network_calls_count": 2,
+                    "retry_count": 0,
+                },
+                "ai": {
+                    "prompt_tokens": 350,
+                    "completion_tokens": 180,
+                    "total_tokens": 530,
+                    "estimated_cost_usd": 0.0085,
+                    "model_name": "gpt-4",
+                },
+            },
+            "steps": [
+                {
+                    "step_name": "validate_input",
+                    "status": "SUCCESS",
+                    "started_at": "2026-04-24T10:00:00Z",
+                    "completed_at": "2026-04-24T10:00:00.050Z",
+                    "latency_ms": 50,
+                },
+                {
+                    "step_name": "generate_analysis",
+                    "status": "SUCCESS",
+                    "started_at": "2026-04-24T10:00:00.050Z",
+                    "completed_at": "2026-04-24T10:00:01.400Z",
+                    "latency_ms": 1350,
+                    "tool_used": "mock_llm",
+                },
+            ],
+            "tools": [
+                {
+                    "tool_name": "mock_llm",
+                    "status": "SUCCESS",
+                    "started_at": "2026-04-24T10:00:00.050Z",
+                    "completed_at": "2026-04-24T10:00:01.400Z",
+                    "latency_ms": 1350,
+                },
+            ],
+            "error": None,
+            "metadata": {},
+        },
     }

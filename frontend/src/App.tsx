@@ -15,6 +15,8 @@ import { Step3ModelPage } from "./pages/Step3ModelPage";
 import { Step4RunPage } from "./pages/Step4RunPage";
 import { Step5ReportPage } from "./pages/Step5ReportPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { AgentEvaluationPage } from "./pages/AgentEvaluationPage";
+import { AgentEvaluationTesterPage } from "./pages/AgentEvaluationTesterPage";
 import { useWizardStore, WIZARD_STEPS } from "./store/wizardStore";
 import type {
   DatasetAutoConfigRead,
@@ -29,7 +31,7 @@ import type {
 
 import dxcLogo from "../dxc-logo.png";
 
-type AppView = "landing" | "wizard" | "login" | "signup" | "about" | "history";
+type AppView = "landing" | "wizard" | "login" | "signup" | "about" | "history" | "agent-evaluation" | "agent-tester";
 type Theme = "light" | "dark";
 type RunningState = "idle" | "creating" | "running" | "polling" | "completed" | "failed";
 
@@ -88,6 +90,82 @@ const AppContent = () => {
   // Navigation handler
   const handleNavigate = useCallback((newView: AppView) => {
     setView(newView);
+  }, []);
+
+  // Agent evaluation example generator
+  const getAgentExample = useCallback((): string => {
+    const example = [
+      {
+        run_id: "run_001",
+        agent_id: "market_agent",
+        agent_version: "1.0.0",
+        status: "SUCCESS",
+        output: { summary: "Market trends show 12% growth" },
+        latency_ms: 450,
+        started_at: "2026-04-24T10:00:00Z",
+        completed_at: "2026-04-24T10:00:00.450Z",
+        metrics: {
+          technical: { cpu_time_ms: 180, memory_mb: 128, network_calls_count: 2, retry_count: 0 },
+          ai: { prompt_tokens: 120, completion_tokens: 80, estimated_cost_usd: 0.0042, model_name: "gpt-4o-mini" },
+        },
+        steps: [
+          { step_name: "validate_input", status: "SUCCESS", started_at: "2026-04-24T10:00:00Z", completed_at: "2026-04-24T10:00:00.050Z", latency_ms: 50 },
+          { step_name: "generate_analysis", status: "SUCCESS", started_at: "2026-04-24T10:00:00.050Z", completed_at: "2026-04-24T10:00:00.400Z", latency_ms: 350, tool_used: "mock_llm" },
+        ],
+        tools: [
+          { tool_name: "mock_llm", status: "SUCCESS", started_at: "2026-04-24T10:00:00.050Z", completed_at: "2026-04-24T10:00:00.400Z", latency_ms: 350 },
+        ],
+        error: null,
+        metadata: {},
+      },
+      {
+        run_id: "run_002",
+        agent_id: "market_agent",
+        agent_version: "1.0.0",
+        status: "SUCCESS",
+        output: { summary: "Sector analysis completed" },
+        latency_ms: 1200,
+        started_at: "2026-04-24T10:01:00Z",
+        completed_at: "2026-04-24T10:01:01.200Z",
+        metrics: {
+          technical: { cpu_time_ms: 520, memory_mb: 256, network_calls_count: 3, retry_count: 1 },
+          ai: { prompt_tokens: 280, completion_tokens: 150, estimated_cost_usd: 0.0095, model_name: "gpt-4" },
+        },
+        steps: [
+          { step_name: "validate_input", status: "SUCCESS", started_at: "2026-04-24T10:01:00Z", completed_at: "2026-04-24T10:01:00.080Z", latency_ms: 80 },
+          { step_name: "generate_analysis", status: "SUCCESS", started_at: "2026-04-24T10:01:00.080Z", completed_at: "2026-04-24T10:01:01.100Z", latency_ms: 1020, tool_used: "mock_llm" },
+        ],
+        tools: [
+          { tool_name: "mock_llm", status: "SUCCESS", started_at: "2026-04-24T10:01:00.080Z", completed_at: "2026-04-24T10:01:01.100Z", latency_ms: 1020 },
+        ],
+        error: null,
+        metadata: {},
+      },
+      {
+        run_id: "run_003",
+        agent_id: "market_agent",
+        agent_version: "1.0.0",
+        status: "FAILED",
+        output: null,
+        latency_ms: 30000,
+        started_at: "2026-04-24T10:02:00Z",
+        completed_at: "2026-04-24T10:02:30Z",
+        metrics: {
+          technical: { cpu_time_ms: 150, memory_mb: 64, network_calls_count: 0, retry_count: 0 },
+          ai: { prompt_tokens: 100, completion_tokens: 0, estimated_cost_usd: 0.002, model_name: "gpt-4o-mini" },
+        },
+        steps: [
+          { step_name: "validate_input", status: "SUCCESS", started_at: "2026-04-24T10:02:00Z", completed_at: "2026-04-24T10:02:00.060Z", latency_ms: 60 },
+          { step_name: "generate_analysis", status: "FAILED", started_at: "2026-04-24T10:02:00.060Z", completed_at: "2026-04-24T10:02:30Z", latency_ms: 29940, tool_used: "mock_llm" },
+        ],
+        tools: [
+          { tool_name: "mock_llm", status: "FAILED", started_at: "2026-04-24T10:02:00.060Z", completed_at: "2026-04-24T10:02:30Z", latency_ms: 29940, error_message: "Request timeout" },
+        ],
+        error: { type: "TIMEOUT", message: "Agent exceeded configured timeout", step: "generate_analysis", recoverable: true },
+        metadata: {},
+      },
+    ];
+    return JSON.stringify(example, null, 2);
   }, []);
 
   // Start wizard - requires authentication
@@ -549,6 +627,53 @@ const AppContent = () => {
             }).catch(() => {});
           }}
         />
+        <Footer onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
+  // Render agent evaluation page
+  if (view === "agent-evaluation") {
+    return (
+      <div className="app-shell">
+        <Navbar
+          logoSrc={dxcLogo}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigate={handleNavigate}
+          currentView={view}
+          apiDocsUrl={apiDocsUrl}
+          mlflowUrl={mlflowUrl}
+        />
+        <AgentEvaluationPage
+          onEvaluate={async (jsonInput) => {
+            const parsed = JSON.parse(jsonInput);
+            const responses = Array.isArray(parsed) ? parsed : [parsed];
+            return await api.evaluateAgentBatch(responses);
+          }}
+          onLoadExample={getAgentExample}
+          loading={api.loading}
+          error={api.error}
+        />
+        <Footer onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
+  // Render agent evaluation tester (demo page)
+  if (view === "agent-tester") {
+    return (
+      <div className="app-shell">
+        <Navbar
+          logoSrc={dxcLogo}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigate={handleNavigate}
+          currentView={view}
+          apiDocsUrl={apiDocsUrl}
+          mlflowUrl={mlflowUrl}
+        />
+        <AgentEvaluationTesterPage apiBaseUrl={apiBaseUrl} />
         <Footer onNavigate={handleNavigate} />
       </div>
     );

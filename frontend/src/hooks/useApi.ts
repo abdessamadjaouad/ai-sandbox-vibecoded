@@ -1,6 +1,8 @@
 // /home/jao/Desktop/sandbox-project-vibecoded/frontend/src/hooks/useApi.ts
 import { useCallback, useMemo, useState } from "react";
 import type {
+  AgentBatchEvaluationResponse,
+  AgentRunResponseV1,
   DatasetAutoConfigRead,
   DatasetListResponse,
   DatasetRead,
@@ -222,6 +224,59 @@ export const useApi = (getAuthHeaders?: AuthHeadersGetter) => {
     [withLoading, authHeaders]
   );
 
+  // Agent Evaluation endpoints
+  const evaluateAgentBatch = useCallback(
+    async (responses: AgentRunResponseV1[]): Promise<AgentBatchEvaluationResponse> =>
+      withLoading(async () =>
+        requestJson<AgentBatchEvaluationResponse>(
+          `${API_BASE_URL}/evaluation/agent/batch`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify({ responses }),
+          },
+          authHeaders
+        )
+      ),
+    [withLoading, authHeaders]
+  );
+
+  const evaluateAgentSingle = useCallback(
+    async (response: AgentRunResponseV1): Promise<AgentBatchEvaluationResponse> =>
+      withLoading(async () =>
+        requestJson<AgentBatchEvaluationResponse>(
+          `${API_BASE_URL}/evaluation/agent/submit`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify(response),
+          },
+          authHeaders
+        )
+      ),
+    [withLoading, authHeaders]
+  );
+
+  const getAgentEvaluationReport = useCallback(
+    async (evalId: string, format: "json" | "markdown" = "json"): Promise<AgentBatchEvaluationResponse | string> =>
+      withLoading(async () => {
+        const url = `${API_BASE_URL}/evaluation/agent/${evalId}/report?format=${format}`;
+        if (format === "markdown") {
+          const res = await fetch(url, { headers: authHeaders });
+          if (!res.ok) throw new ApiError("Failed to fetch report", res.status);
+          return await res.text();
+        }
+        return requestJson<AgentBatchEvaluationResponse>(url, {}, authHeaders);
+      }),
+    [withLoading, authHeaders]
+  );
+
+  const getAgentApiContract = useCallback(
+    async (): Promise<Record<string, unknown>> =>
+      withLoading(async () => requestJson<Record<string, unknown>>(`${API_BASE_URL}/evaluation/agent/contract`, {}, authHeaders)),
+    [withLoading, authHeaders]
+  );
+
   return useMemo(
     () => ({
       apiBaseUrl: API_BASE_URL,
@@ -241,6 +296,10 @@ export const useApi = (getAuthHeaders?: AuthHeadersGetter) => {
       getExperimentResults,
       generateReport,
       listExperiments,
+      evaluateAgentBatch,
+      evaluateAgentSingle,
+      getAgentEvaluationReport,
+      getAgentApiContract,
     }),
     [
       loading,
@@ -258,6 +317,10 @@ export const useApi = (getAuthHeaders?: AuthHeadersGetter) => {
       getExperimentResults,
       generateReport,
       listExperiments,
+      evaluateAgentBatch,
+      evaluateAgentSingle,
+      getAgentEvaluationReport,
+      getAgentApiContract,
     ]
   );
 };

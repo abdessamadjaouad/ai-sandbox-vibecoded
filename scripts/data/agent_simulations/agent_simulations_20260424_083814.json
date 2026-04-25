@@ -1,0 +1,756 @@
+[
+  {
+    "run_id": "run_d4df7414",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "SUCCESS",
+    "output": {
+      "summary": "Processed: Test input scenario success_standard batch 1...",
+      "result": "ok"
+    },
+    "latency_ms": 4213.04,
+    "started_at": "2026-04-24T08:38:14.833784",
+    "completed_at": "2026-04-24T08:38:19.046821",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 1263.91,
+        "memory_mb": 64.45526983757995,
+        "network_calls_count": 1,
+        "retry_count": 0
+      },
+      "ai": {
+        "prompt_tokens": 50,
+        "completion_tokens": 31,
+        "total_tokens": 81,
+        "estimated_cost_usd": 0.00162,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.833784",
+        "completed_at": "2026-04-24T08:38:15.863827",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": "Input validated",
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:15.863827",
+        "completed_at": "2026-04-24T08:38:17.589106",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": "Response generated",
+        "reasoning": null
+      },
+      {
+        "step_name": "format_output",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:17.589106",
+        "completed_at": "2026-04-24T08:38:19.046821",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": "Output formatted",
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:15.863827",
+        "completed_at": "2026-04-24T08:38:17.589106",
+        "latency_ms": null,
+        "input_params": {
+          "prompt": "Test input scenario success_standard batch 1"
+        },
+        "output_result": "Generated text",
+        "error_message": null
+      }
+    ],
+    "error": null,
+    "metadata": {
+      "scenario": "success_standard",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_4a229d89",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "FAILED",
+    "output": null,
+    "latency_ms": 3660.29,
+    "started_at": "2026-04-24T08:38:14.833934",
+    "completed_at": "2026-04-24T08:38:18.494227",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 1281.1,
+        "memory_mb": 276.08206718279735,
+        "network_calls_count": 1,
+        "retry_count": 2
+      },
+      "ai": {
+        "prompt_tokens": 120,
+        "completion_tokens": 0,
+        "total_tokens": 120,
+        "estimated_cost_usd": 0.0024,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.833934",
+        "completed_at": "2026-04-24T08:38:16.326452",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:16.326452",
+        "completed_at": "2026-04-24T08:38:17.660757",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": null,
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:16.326452",
+        "completed_at": "2026-04-24T08:38:17.660757",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": "Connection reset by peer"
+      }
+    ],
+    "error": {
+      "type": "TECHNICAL",
+      "message": "LLM inference failed after 2 retries",
+      "step": "generate_response",
+      "traceback": null,
+      "recoverable": true
+    },
+    "metadata": {
+      "scenario": "failure_technical",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_8f3eedc8",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "FAILED",
+    "output": null,
+    "latency_ms": 2839.95,
+    "started_at": "2026-04-24T08:38:14.833994",
+    "completed_at": "2026-04-24T08:38:17.673948",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 993.98,
+        "memory_mb": 138.50625434244725,
+        "network_calls_count": 1,
+        "retry_count": 2
+      },
+      "ai": {
+        "prompt_tokens": 120,
+        "completion_tokens": 0,
+        "total_tokens": 120,
+        "estimated_cost_usd": 0.0024,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.833994",
+        "completed_at": "2026-04-24T08:38:15.513025",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:15.513025",
+        "completed_at": "2026-04-24T08:38:16.155736",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": null,
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:15.513025",
+        "completed_at": "2026-04-24T08:38:16.155736",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": "Connection reset by peer"
+      }
+    ],
+    "error": {
+      "type": "TECHNICAL",
+      "message": "LLM inference failed after 2 retries",
+      "step": "generate_response",
+      "traceback": null,
+      "recoverable": true
+    },
+    "metadata": {
+      "scenario": "failure_technical",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_c602c35a",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "SUCCESS",
+    "output": {
+      "summary": "Processed: Test input scenario success_standard batch 4...",
+      "result": "ok"
+    },
+    "latency_ms": 4665.71,
+    "started_at": "2026-04-24T08:38:14.834041",
+    "completed_at": "2026-04-24T08:38:19.499755",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 1399.71,
+        "memory_mb": 130.9437915843666,
+        "network_calls_count": 1,
+        "retry_count": 0
+      },
+      "ai": {
+        "prompt_tokens": 50,
+        "completion_tokens": 30,
+        "total_tokens": 80,
+        "estimated_cost_usd": 0.0016,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.834041",
+        "completed_at": "2026-04-24T08:38:16.209827",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": "Input validated",
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:16.209827",
+        "completed_at": "2026-04-24T08:38:18.515233",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": "Response generated",
+        "reasoning": null
+      },
+      {
+        "step_name": "format_output",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:18.515233",
+        "completed_at": "2026-04-24T08:38:19.499755",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": "Output formatted",
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:16.209827",
+        "completed_at": "2026-04-24T08:38:18.515233",
+        "latency_ms": null,
+        "input_params": {
+          "prompt": "Test input scenario success_standard batch 4"
+        },
+        "output_result": "Generated text",
+        "error_message": null
+      }
+    ],
+    "error": null,
+    "metadata": {
+      "scenario": "success_standard",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_739a6d05",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "FAILED",
+    "output": null,
+    "latency_ms": 30253.0,
+    "started_at": "2026-04-24T08:38:14.834099",
+    "completed_at": "2026-04-24T08:38:45.087099",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 3025.3,
+        "memory_mb": 126.58173816904073,
+        "network_calls_count": 0,
+        "retry_count": 0
+      },
+      "ai": {
+        "prompt_tokens": 80,
+        "completion_tokens": 0,
+        "total_tokens": 80,
+        "estimated_cost_usd": 0.0016,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.834099",
+        "completed_at": "2026-04-24T08:38:14.884099",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:14.884099",
+        "completed_at": "2026-04-24T08:38:45.087099",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": null,
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:14.884099",
+        "completed_at": "2026-04-24T08:38:45.087099",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": "Request timeout"
+      }
+    ],
+    "error": {
+      "type": "TIMEOUT",
+      "message": "Agent exceeded configured timeout (30000ms)",
+      "step": "generate_response",
+      "traceback": null,
+      "recoverable": true
+    },
+    "metadata": {
+      "scenario": "failure_timeout",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_94bdbd49",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "FAILED",
+    "output": null,
+    "latency_ms": 30243.0,
+    "started_at": "2026-04-24T08:38:14.834144",
+    "completed_at": "2026-04-24T08:38:45.077144",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 3024.3,
+        "memory_mb": 113.80216293890297,
+        "network_calls_count": 0,
+        "retry_count": 0
+      },
+      "ai": {
+        "prompt_tokens": 80,
+        "completion_tokens": 0,
+        "total_tokens": 80,
+        "estimated_cost_usd": 0.0016,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.834144",
+        "completed_at": "2026-04-24T08:38:14.884144",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:14.884144",
+        "completed_at": "2026-04-24T08:38:45.077144",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": null,
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:14.884144",
+        "completed_at": "2026-04-24T08:38:45.077144",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": "Request timeout"
+      }
+    ],
+    "error": {
+      "type": "TIMEOUT",
+      "message": "Agent exceeded configured timeout (30000ms)",
+      "step": "generate_response",
+      "traceback": null,
+      "recoverable": true
+    },
+    "metadata": {
+      "scenario": "failure_timeout",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_9f2bd06b",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "SUCCESS",
+    "output": {
+      "summary": "Processed: Test input scenario success_standard batch 7...",
+      "result": "ok"
+    },
+    "latency_ms": 4001.56,
+    "started_at": "2026-04-24T08:38:14.834187",
+    "completed_at": "2026-04-24T08:38:18.835749",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 1200.47,
+        "memory_mb": 161.12056759340075,
+        "network_calls_count": 1,
+        "retry_count": 0
+      },
+      "ai": {
+        "prompt_tokens": 50,
+        "completion_tokens": 30,
+        "total_tokens": 80,
+        "estimated_cost_usd": 0.0016,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.834187",
+        "completed_at": "2026-04-24T08:38:16.157456",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": "Input validated",
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:16.157456",
+        "completed_at": "2026-04-24T08:38:17.799306",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": "Response generated",
+        "reasoning": null
+      },
+      {
+        "step_name": "format_output",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:17.799306",
+        "completed_at": "2026-04-24T08:38:18.835749",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": "Output formatted",
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:16.157456",
+        "completed_at": "2026-04-24T08:38:17.799306",
+        "latency_ms": null,
+        "input_params": {
+          "prompt": "Test input scenario success_standard batch 7"
+        },
+        "output_result": "Generated text",
+        "error_message": null
+      }
+    ],
+    "error": null,
+    "metadata": {
+      "scenario": "success_standard",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_0d4bf547",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "SUCCESS",
+    "output": {
+      "summary": "Heavy analysis: Test input scenario success_heavy_load batch 8...",
+      "result": "ok"
+    },
+    "latency_ms": 19292.0,
+    "started_at": "2026-04-24T08:38:14.834231",
+    "completed_at": "2026-04-24T08:38:34.126229",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 7716.8,
+        "memory_mb": 635.5751355000791,
+        "network_calls_count": 3,
+        "retry_count": 1
+      },
+      "ai": {
+        "prompt_tokens": 500,
+        "completion_tokens": 467,
+        "total_tokens": 967,
+        "estimated_cost_usd": 0.04835,
+        "model_name": "gpt-4"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.834231",
+        "completed_at": "2026-04-24T08:38:16.532528",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "deep_analysis",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:16.532528",
+        "completed_at": "2026-04-24T08:38:29.987279",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "post_process",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:29.987279",
+        "completed_at": "2026-04-24T08:38:33.186967",
+        "latency_ms": null,
+        "tool_used": "data_transformer",
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "format_output",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:33.186967",
+        "completed_at": "2026-04-24T08:38:34.126229",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:16.532528",
+        "completed_at": "2026-04-24T08:38:29.987279",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": null
+      },
+      {
+        "tool_name": "data_transformer",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:29.987279",
+        "completed_at": "2026-04-24T08:38:33.186967",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": null
+      }
+    ],
+    "error": null,
+    "metadata": {
+      "scenario": "success_heavy_load",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_dbfc5fd5",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "FAILED",
+    "output": null,
+    "latency_ms": 30107.0,
+    "started_at": "2026-04-24T08:38:14.834284",
+    "completed_at": "2026-04-24T08:38:44.941284",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 3010.7,
+        "memory_mb": 116.04383222448092,
+        "network_calls_count": 0,
+        "retry_count": 0
+      },
+      "ai": {
+        "prompt_tokens": 80,
+        "completion_tokens": 0,
+        "total_tokens": 80,
+        "estimated_cost_usd": 0.0016,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.834284",
+        "completed_at": "2026-04-24T08:38:14.884284",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:14.884284",
+        "completed_at": "2026-04-24T08:38:44.941284",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": null,
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:14.884284",
+        "completed_at": "2026-04-24T08:38:44.941284",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": "Request timeout"
+      }
+    ],
+    "error": {
+      "type": "TIMEOUT",
+      "message": "Agent exceeded configured timeout (30000ms)",
+      "step": "generate_response",
+      "traceback": null,
+      "recoverable": true
+    },
+    "metadata": {
+      "scenario": "failure_timeout",
+      "workflow_id": null
+    }
+  },
+  {
+    "run_id": "run_adb9467d",
+    "agent_id": "market_agent",
+    "agent_version": "1.0.0",
+    "status": "FAILED",
+    "output": null,
+    "latency_ms": 2736.37,
+    "started_at": "2026-04-24T08:38:14.834340",
+    "completed_at": "2026-04-24T08:38:17.570707",
+    "metrics": {
+      "technical": {
+        "cpu_time_ms": 957.73,
+        "memory_mb": 485.5041797702711,
+        "network_calls_count": 1,
+        "retry_count": 2
+      },
+      "ai": {
+        "prompt_tokens": 120,
+        "completion_tokens": 0,
+        "total_tokens": 120,
+        "estimated_cost_usd": 0.0024,
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    "steps": [
+      {
+        "step_name": "validate_input",
+        "status": "SUCCESS",
+        "started_at": "2026-04-24T08:38:14.834340",
+        "completed_at": "2026-04-24T08:38:15.990632",
+        "latency_ms": null,
+        "tool_used": null,
+        "output": null,
+        "reasoning": null
+      },
+      {
+        "step_name": "generate_response",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:15.990632",
+        "completed_at": "2026-04-24T08:38:16.747805",
+        "latency_ms": null,
+        "tool_used": "mock_llm",
+        "output": null,
+        "reasoning": null
+      }
+    ],
+    "tools": [
+      {
+        "tool_name": "mock_llm",
+        "status": "FAILED",
+        "started_at": "2026-04-24T08:38:15.990632",
+        "completed_at": "2026-04-24T08:38:16.747805",
+        "latency_ms": null,
+        "input_params": {},
+        "output_result": null,
+        "error_message": "Connection reset by peer"
+      }
+    ],
+    "error": {
+      "type": "TECHNICAL",
+      "message": "LLM inference failed after 2 retries",
+      "step": "generate_response",
+      "traceback": null,
+      "recoverable": true
+    },
+    "metadata": {
+      "scenario": "failure_technical",
+      "workflow_id": null
+    }
+  }
+]
